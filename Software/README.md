@@ -10,11 +10,12 @@ Possui as seguintes funções:
 3. [Estoque de Medicamentos](./doc/estoque.md)
 4. [Configurações de Sistema](./doc/configurações.md)
 
----
-
-Acessadas por meio do **Menu Hambúrguer** na lateral direita
+### Menu
+Acesso das funções por meio do **Menu Hambúrguer** na lateral direita
 ![Botão Menu](./doc/images/Botao-Menu.png)
 ![Menu Lateral](./doc/images/Menu.png)
+
+### Notificações
 O aplicativo tem as notificações que irão alertar o usuário sobre:
 1. O horário de tomar remédio;
 
