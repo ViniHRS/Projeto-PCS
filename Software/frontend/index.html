@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CIDRA App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="overlay" id="overlay"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <h3>Menu CIDRA</h3>
+        <ul>
+            <li class="menu-item" data-target="tela-calendario">Calendário</li>
+            <li class="menu-item" data-target="tela-remedios">Meus Remédios</li>
+            <li class="menu-item" data-target="tela-estoque">Estoque</li>
+            <li class="menu-item" data-target="tela-config">Configurações</li>
+        </ul>
+    </aside>
+
+    <header>
+        <div class="logo-container" id="logo-link" style="cursor: pointer;">
+            <div class="logo-placeholder">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            </div>
+            <h1 class="brand-name">CIDRA</h1>
+        </div>
+        <button class="remedioBtn" id="remedioBtn">
+            <span>+</span>
+        </button>
+        <button class="menu-toggle" id="menuBtn">
+            <span></span><span></span><span></span>
+        </button>
+    </header>
+
+    <main>
+        <section id="tela-calendario" class="content-section">
+            <div class="calendar">
+                <div class="calendar-header">
+                    <button id="prev">&#10094;</button>
+                    <h2 id="monthYear"></h2>
+                    <button id="next">&#10095;</button>
+                </div>
+                <div class="weekdays">
+                    <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+                </div>
+                <div class="days" id="days"></div>
+            </div>
+        </section>
+        </main>
+
+    <div id="modal-remedio" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="fechar-modal">&times;</span>
+            <h2 style="margin-bottom: 20px;">Agendar Remédio</h2>
+            
+            <form id="form-remedio">
+                <div class="scroll-page">
+                    <div class="form-group">
+                        <label for="nome-remedio">Nome do Remédio</label>
+                        <input type="text" id="nome-remedio" placeholder="Ex: Amoxicilina" required>
+                    </div>
+    
+                    <div class="form-group">
+                        <label for="slot">Slot no CIDRA</label>
+                        <input type="number" id="slot-remedio" min="1" max="8">
+                    </div>
+        
+                    <div class="form-group">
+                       <label for="data-inicio">Data de Início</label>
+                       <input type="date" id="data-inicio" required>
+                    </div>
+    
+                    <div class="form-group">
+                        <label for="duracao">Tomar por quanto tempo?</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="number" id="duracao" placeholder="Ex: 5" min="1" required style="flex: 1;">
+                            <span style="font-weight: bold; color: #666; font-size: 0.9rem;">dia(s)</span>
+                        </div>
+                    </div>
+    
+                    <div class="form-group">
+                        <label for="frequencia">Repetir a cada</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="number" id="frequencia" value="1" min="1" required style="flex: 1;">
+                            <span style="font-weight: bold; color: #666; font-size: 0.9rem;">dia(s)</span>
+                        </div>
+                    </div>
+    
+                    <div class="form-group">
+                        <label for="qtd-pilulas">Quantidade (Pílulas/Dose)</label>
+                        <input type="number" id="qtd-pilulas" placeholder="Ex: 1" min="1" required>
+                    </div>
+    
+                    <div id="container-horarios">
+                        <label class="label-estilizada">Horários</label>
+                        <div class="horario-item">
+                            <input type="time" class="input-horario" step="60" required>
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="save-event-btn">Salvar Agenda</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="modal-lista-dia" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="fechar-lista-dia">&times;</span>
+            <h2 id="titulo-lista-dia">Remédios do Dia</h2>
+            <div id="lista-remedios-container" style="margin-top: 20px; text-align: left;">
+                <p style="color: #999; text-align: center;">Nenhum remédio agendado para este dia.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
