@@ -85,6 +85,18 @@ header {
     border-radius: 2px;
 }
 
+.content-section {
+    display: none;
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Abre uma exceção manual para o calendário aparecer assim que a página abrir */
+#tela-calendario {
+    display: block;
+}
+
 /* ==========================================================================
    CALENDÁRIO
    ========================================================================== */
@@ -259,6 +271,80 @@ header {
     cursor: pointer;
     box-shadow: 0 4px 0 #46a302;
     display: block;
+}
+
+/* ==========================================================================
+   TELA MEUS REMÉDIOS (GRID E CARDS)
+   ========================================================================== */
+.remedios-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    padding: 10px;
+}
+
+.card-remedio-geral {
+    box-sizing: border-box;
+    background: #fff;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    border-left: 5px solid #ffb347; 
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 220px; /* Mantém uma altura padrão elegante nos cartões */
+}
+
+.card-remedio-corpo h3 {
+    font-size: 1.2rem;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.card-remedio-corpo p {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 4px;
+}
+
+/* Container de botões na base do card */
+.card-remedio-acoes {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.btn-acao {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background 0.2s;
+}
+
+/* Botão Editar - Cinza/Azul discreto */
+.btn-editar {
+    background-color: #e2e8f0;
+    color: #4a5568;
+}
+
+.btn-editar:hover {
+    background-color: #cbd5e1;
+}
+
+/* Botão Eliminar - Vermelho suave */
+.btn-eliminar {
+    background-color: #fee2e2;
+    color: #ef4444;
+}
+
+.btn-eliminar:hover {
+    background-color: #fca5a5;
 }
 
 /* ==========================================================================

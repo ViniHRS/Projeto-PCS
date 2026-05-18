@@ -4,7 +4,9 @@ const sidebar = document.getElementById('sidebar');
 const overlay = document.getElementById('overlay');
 const menuItems = document.querySelectorAll('.menu-item');
 const sections = document.querySelectorAll('.content-section');
-
+sections.forEach(section => section.style.display = 'none');
+const calendario = document.getElementById('tela-calendario');
+if (calendario) calendario.style.display = 'block';
 // Modais
 const modalRemedio = document.getElementById('modal-remedio'); 
 const modalLista = document.getElementById('modal-lista-dia'); 
@@ -135,14 +137,17 @@ function resetarFormulario() {
     containerHorarios.querySelector('.input-horario').addEventListener('change', adicionarNovoCampoHorario);
 }
 
-// --- 5. SALVAMENTO (LOCAL STORAGE) ---
+// --- 5. SALVAMENTO UNIFICADO (CADASTRO E EDIÇÃO) ---
 formRemedio.addEventListener('submit', (e) => {
     e.preventDefault();
 
-    const novoRemedio = {
-        id: Date.now(), // ID único para cada agendamento
+    // Captura o ID oculto para saber se estamos editando ou cadastrando
+    const idExistente = document.getElementById('id-remedio').value;
+    
+    // Captura os dados inseridos em formato de objeto estruturado
+    const dadosForm = {
         nome: document.getElementById('nome-remedio').value,
-        slot: document.getElementById('slot-remedio').value,
+        slot: document.getElementById('slot-remedio').value || "",
         dataInicio: document.getElementById('data-inicio').value,
         frequenciaDias: parseInt(document.getElementById('frequencia').value),
         duracaoTratamento: parseInt(document.getElementById('duracao').value),
@@ -152,14 +157,63 @@ formRemedio.addEventListener('submit', (e) => {
                        .filter(v => v !== "")
     };
 
-    // Adicionar ao array e salvar no LocalStorage
-    remediosAgendados.push(novoRemedio);
-    localStorage.setItem('remedios', JSON.stringify(remediosAgendados));
+    if (idExistente) {
+        // MODO EDIÇÃO: Encontra o remédio no array pelo ID e o substitui
+        const index = remediosAgendados.findIndex(r => r.id == idExistente);
+        if (index !== -1) {
+            remediosAgendados[index] = { id: parseInt(idExistente), ...dadosForm };
+            alert(`Alterações salvas com sucesso!`);
+        }
+    } else {
+        // MODO CADASTRO NOVO: Cria um identificador único usando o timestamp atual
+        const novoRemedio = { id: Date.now(), ...dadosForm };
+        remediosAgendados.push(novoRemedio);
+        alert(`Sucesso! ${novoRemedio.nome} foi guardado.`);
+    }
 
-    alert(`Sucesso! ${novoRemedio.nome} foi guardado.`);
+    // Grava as alterações no LocalStorage do usuário
+    localStorage.setItem('remedios', JSON.stringify(remediosAgendados));
+    
+    // Fecha o modal e limpa os campos
     modalRemedio.style.display = "none";
     resetarFormulario();
+    
+    // Recarrega visualmente ambas as telas para exibir as mudanças imediatamente
+    if (typeof renderCalendar === "function") renderCalendar();
+    if (typeof renderizarMeusRemedios === "function") renderizarMeusRemedios();
 });
+
+// Função para resetar/limpar o formulário de cadastro totalmente
+function resetarFormulario() {
+    formRemedio.reset();
+    
+    // Limpa o ID oculto para evitar que um novo cadastro herde o ID de uma edição anterior
+    const inputId = document.getElementById('id-remedio');
+    if (inputId) inputId.value = "";
+
+    // Restaura o container de horários deixando apenas o primeiro campo padrão vazio
+    containerHorarios.innerHTML = `
+        <label class="label-estilizada">Horários</label>
+        <div class="horario-item">
+            <input type="time" class="input-horario" step="60" required>
+        </div>
+    `;
+    
+    // Reatribui o listener dinâmico de novos campos de horários ao primeiro input
+    const primeiroInput = containerHorarios.querySelector('.input-horario');
+    if (primeiroInput) {
+        primeiroInput.addEventListener('change', adicionarNovoCampoHorario);
+    }
+}
+
+// Vincula o botão clássico de fechar "X" do modal para também resetar o form limpo
+if (fecharModalCadastro) {
+    fecharModalCadastro.addEventListener('click', () => {
+        modalRemedio.style.display = "none";
+        resetarFormulario();
+    });
+}
+
 
 // --- 6. CALENDÁRIO ---
 function renderCalendar() {
@@ -212,7 +266,13 @@ menuItems.forEach(item => {
     item.addEventListener('click', () => {
         const targetId = item.getAttribute('data-target');
         sections.forEach(section => section.style.display = 'none');
-        document.getElementById(targetId).style.display = 'block';
+
+        const targetSection = document.getElementById(targetId);
+        if (targetSection) targetSection.style.display = 'block';
+
+        if (targetId === 'tela-remedios') {
+            renderizarMeusRemedios();
+        }
         toggleMenu();
     });
 });
@@ -227,3 +287,85 @@ if (logoLink) {
 }
 
 renderCalendar();
+
+// --- 9. TELA MEUS REMÉDIOS: RENDERIZAR, EDITAR E ELIMINAR ---
+
+// Função responsável por desenhar a lista completa de medicamentos na tela "Meus Remédios"
+function renderizarMeusRemedios() {
+    const containerGrid = document.getElementById('lista-geral-remedios');
+    if (!containerGrid) return;
+
+    containerGrid.innerHTML = "";
+
+    if (remediosAgendados.length === 0) {
+        containerGrid.innerHTML = `<p style="grid-column: 1/-1; color: #666; text-align: center; padding: 40px;">Você ainda não tem nenhum remédio agendado.</p>`;
+        return;
+    }
+
+    remediosAgendados.forEach(remedio => {
+        const card = document.createElement('div');
+        card.classList.add('card-remedio-geral');
+
+        // Formata a exibição dos horários cadastrados
+        const listaHorarios = remedio.horarios.join(', ');
+
+        card.innerHTML = `
+            <div class="card-remedio-corpo">
+                <h3>${remedio.nome}</h3>
+                ${remedio.slot ? `<p><strong>Slot CIDRA:</strong> ${remedio.slot}</p>` : ''}
+                <p><strong>Início:</strong> ${remedio.dataInicio.split('-').reverse().join('/')}</p>
+                <p><strong>Duração:</strong> ${remedio.duracaoTratamento} dia(s)</p>
+                <p><strong>Frequência:</strong> A cada ${remedio.frequenciaDias} dia(s)</p>
+                <p><strong>Dose:</strong> ${remedio.quantidade} pílula(s)</p>
+                <p><strong>Horários:</strong> ${listaHorarios}</p>
+            </div>
+            <div class="card-remedio-acoes">
+                <button class="btn-acao btn-editar" onclick="prepararEdicao(${remedio.id})">Editar</button>
+                <button class="btn-acao btn-eliminar" onclick="eliminarRemedio(${remedio.id})">Eliminar</button>
+            </div>
+        `;
+        containerGrid.appendChild(card);
+    });
+}
+
+// Função que puxa os dados do remédio do array e joga de volta no formulário do modal
+function prepararEdicao(id) {
+    const remedio = remediosAgendados.find(r => r.id === id);
+    if (!remedio) return;
+
+    // Preenche o campo oculto identificador e os visíveis
+    document.getElementById('id-remedio').value = remedio.id;
+    document.getElementById('nome-remedio').value = remedio.nome;
+    document.getElementById('slot-remedio').value = remedio.slot;
+    document.getElementById('data-inicio').value = remedio.dataInicio;
+    document.getElementById('duracao').value = remedio.duracaoTratamento;
+    document.getElementById('frequencia').value = remedio.frequenciaDias;
+    document.getElementById('qtd-pilulas').value = remedio.quantidade;
+
+    // Limpa e reconstrói os campos dinâmicos de horários baseando-se no remédio salvo
+    containerHorarios.innerHTML = `<label class="label-estilizada">Horários</label>`;
+    
+    remedio.horarios.forEach((hora, index) => {
+        const novoDiv = document.createElement('div');
+        novoDiv.classList.add('horario-item');
+        novoDiv.innerHTML = `<input type="time" class="input-horario" value="${hora}" step="60" ${index === 0 ? 'required' : ''}>`;
+        containerHorarios.appendChild(novoDiv);
+    });
+
+    // Reatribui o ouvinte para criar novos campos dinâmicos caso mude o último horário
+    const inputs = containerHorarios.querySelectorAll('.input-horario');
+    inputs[inputs.length - 1].addEventListener('change', adicionarNovoCampoHorario);
+
+    // Abre o modal de cadastro (que agora atua como edição)
+    modalRemedio.style.display = "block";
+}
+
+// Função para apagar permanentemente um agendamento
+function eliminarRemedio(id) {
+    if (confirm("Tem certeza que deseja apagar este agendamento de remédio?")) {
+        remediosAgendados = remediosAgendados.filter(r => r.id !== id);
+        localStorage.setItem('remedios', JSON.stringify(remediosAgendados));
+        renderizarMeusRemedios(); // Atualiza a tela imediatamente
+        renderCalendar();         // Atualiza as marcações do calendário em background
+    }
+}
