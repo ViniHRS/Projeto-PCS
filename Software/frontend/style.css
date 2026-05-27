@@ -97,6 +97,19 @@ header {
     display: block;
 }
 
+#tela-remedios h2, 
+#tela-estoque h2 {
+    background-color: #ffffff;    /* Caixa branca */
+    color: #333333;               /* Cor do texto escura para contraste */
+    padding: 15px 25px;           /* Espaçamento interno da caixa */
+    border-radius: 12px;          /* Bordas arredondadas idênticas aos inputs */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* Sombra suave para dar profundidade */
+    text-align: center;           /* Centraliza o texto do título */
+    margin-bottom: 25px;          /* Espaço entre a caixa do título e o conteúdo abaixo */
+    display: block;               /* Garante que ocupe a largura disponível da seção */
+    font-weight: 800;             /* Mantém o padrão de destaque do app */
+}
+
 /* ==========================================================================
    CALENDÁRIO
    ========================================================================== */
@@ -156,11 +169,39 @@ header {
     background-color: #f0f0f0;
 }
 
-/* Destaque para o Dia Atual */
+.calendar .days div.insuficiente {
+    background-color: #fee2e2 !important;
+    color: #b91c1c !important;
+    border: 2px dashed #ef4444;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+.days div.dia-medicamento {
+    background-color: #f0f0f0; /* Cinza suave */
+    color: #333;
+    border-radius: 50%;
+    font-weight: 500;
+}
+
+/* Destaque Azul: Dias de reposição de estoque agendados */
+.days div.dia-reposicao {
+    background-color: #007bff !important; /* Azul marcante */
+    color: white !important;
+    border-radius: 50%;
+    font-weight: bold;
+}
+
 .days div.today {
-    background-color: #ffb347; /* Laranja CIDRA */
+    background-color: #ffb347;
     color: white;
     font-weight: bold;
+}
+
+/* Efeito sutil ao passar o rato (hover) sobre os dias destacados */
+.days div.dia-medicamento:hover,
+.days div.dia-reposicao:hover {
+    filter: brightness(0.9);
 }
 
 /* ==========================================================================
@@ -273,6 +314,32 @@ header {
     display: block;
 }
 
+.alerta-reposicao-modal {
+    background-color: #e6f2ff; /* Fundo azul bem suave */
+    border-left: 5px solid #007bff; /* Borda esquerda com o azul padrão */
+    padding: 12px 15px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    color: #004085;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.alerta-reposicao-conteudo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.alerta-reposicao-conteudo span.icone-alerta {
+    font-size: 1.4rem;
+}
+
+.alerta-reposicao-conteudo span {
+    font-weight: bold;
+    color: #007bff;
+}
+
 /* ==========================================================================
    TELA MEUS REMÉDIOS (GRID E CARDS)
    ========================================================================== */
@@ -345,6 +412,83 @@ header {
 
 .btn-eliminar:hover {
     background-color: #fca5a5;
+}
+
+/* ==========================================================================
+   ESTILOS PARA O CONTADOR INTERATIVO DE ESTOQUE
+   ========================================================================== */
+.card-estoque {
+    background: #fff;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    border-left: 5px solid #58cc02; /* Verde padrão */
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Quando o estoque estiver muito baixo (Ex: menos de 10 pílulas) */
+.card-estoque.estoque-baixo {
+    border-left-color: #ff4b4b;
+}
+
+.contador-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f7f7f7;
+    padding: 15px;
+    border-radius: 12px;
+    margin: 10px 0;
+}
+
+.btn-contador {
+    background: #58cc02;
+    color: white;
+    border: none;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 0 #46a302;
+}
+
+.btn-contador:active {
+    transform: translateY(3px);
+    box-shadow: none;
+}
+
+.numero-estoque {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #333;
+}
+
+.btn-agendar-reposicao {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9rem;
+    box-shadow: 0 3px 0 #0056b3;
+}
+
+/* Classe especial para o dia de reposição no Calendário */
+.calendar .days div.dia-reposicao {
+    background-color: #e7f3ff !important;
+    color: #007bff !important;
+    border: 2px solid #007bff !important;
+    font-weight: bold;
+    border-radius: 50%;
 }
 
 /* ==========================================================================

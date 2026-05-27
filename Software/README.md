@@ -8,7 +8,7 @@ Possui as seguintes funções:
 1. [Calendário](./doc/calendario.md)
 2. [Lista de Remédios](./doc/lista-remedios.md)
 3. [Estoque de Medicamentos](./doc/estoque.md)
-4. [Configurações de Sistema](./doc/configurações.md)
+4. [Configurações de Sistema](./doc/configuracao.md)
 
 ### Menu
 Acesso das funções por meio do **Menu Hambúrguer** na lateral direita
