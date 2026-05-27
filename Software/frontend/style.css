@@ -37,8 +37,14 @@ header {
 .brand-name {
     font-size: 1.2rem;
     font-weight: 800;
-    color: #000; /* Alterado para PRETO */
+    color: #000;
     letter-spacing: 1px;
+}
+
+.logo-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Botão Central de Adicionar (+) - ÚNICO VERDE */
@@ -49,450 +55,36 @@ header {
     background-color: #58cc02; /* Mantido VERDE */
     color: white;
     border: none;
-    padding: 10px 24px;
-    border-radius: 12px;
-    font-weight: 700;
-    font-size: 14px;
-    text-transform: uppercase;
+    padding: 10px 20px; /* Espaçamento interno para torná-lo retangular */
+    border-radius: 8px; /* Cantos suavemente arredondados */
+    font-size: 1.4rem;
+    font-weight: bold;
     cursor: pointer;
-    box-shadow: 0 4px 0 #46a302; 
-    transition: all 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transition: transform 0.2s, background-color 0.2s;
+    z-index: 10;
 }
 
 .remedioBtn:hover {
-    background-color: #61e002;
+    transform: translateX(-50%) scale(1.05);
+    background-color: #46a302;
 }
 
-.remedioBtn:active {
-    transform: translateX(-50%) translateY(2px);
-    box-shadow: 0 2px 0 #46a302;
-}
-
-.menu-toggle {
+/* Botão Hamburger Menu (Preto) */
+.menu-btn {
     background: none;
     border: none;
+    font-size: 1.5rem;
     cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.menu-toggle span {
-    display: block;
-    width: 25px;
-    height: 3px;
-    background-color: #000; /* Alterado para PRETO */
-    border-radius: 2px;
-}
-
-.content-section {
-    display: none;
-    padding: 20px;
-    max-width: 800px;
-    margin: 0 auto;
-}
-
-/* Abre uma exceção manual para o calendário aparecer assim que a página abrir */
-#tela-calendario {
-    display: block;
-}
-
-#tela-remedios h2, 
-#tela-estoque h2 {
-    background-color: #ffffff;    /* Caixa branca */
-    color: #333333;               /* Cor do texto escura para contraste */
-    padding: 15px 25px;           /* Espaçamento interno da caixa */
-    border-radius: 12px;          /* Bordas arredondadas idênticas aos inputs */
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* Sombra suave para dar profundidade */
-    text-align: center;           /* Centraliza o texto do título */
-    margin-bottom: 25px;          /* Espaço entre a caixa do título e o conteúdo abaixo */
-    display: block;               /* Garante que ocupe a largura disponível da seção */
-    font-weight: 800;             /* Mantém o padrão de destaque do app */
+    color: #000;
+    padding: 5px;
 }
 
 /* ==========================================================================
-   CALENDÁRIO
-   ========================================================================== */
-.calendar {
-    background: #fff;
-    border-radius: 15px;
-    padding: 20px;
-    max-width: 400px;
-    margin: 40px auto;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-}
-
-.calendar-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.calendar-header button {
-    background: none;
-    border: none;
-    font-size: 1.2rem;
-    cursor: pointer;
-    color: #000; /* Setas alteradas para PRETO */
-    padding: 5px 10px;
-}
-
-.weekdays {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    text-align: center;
-    font-weight: bold;
-    color: #999;
-    font-size: 0.8rem;
-    margin-bottom: 10px;
-}
-
-.days {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 5px;
-}
-
-.days div {
-    aspect-ratio: 1 / 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    border-radius: 50%;
-    font-size: 0.9rem;
-    transition: background 0.2s;
-}
-
-.days div:hover:not(.empty) {
-    background-color: #f0f0f0;
-}
-
-.calendar .days div.insuficiente {
-    background-color: #fee2e2 !important;
-    color: #b91c1c !important;
-    border: 2px dashed #ef4444;
-    border-radius: 4px;
-    font-weight: bold;
-}
-
-.days div.dia-medicamento {
-    background-color: #f0f0f0; /* Cinza suave */
-    color: #333;
-    border-radius: 50%;
-    font-weight: 500;
-}
-
-/* Destaque Azul: Dias de reposição de estoque agendados */
-.days div.dia-reposicao {
-    background-color: #007bff !important; /* Azul marcante */
-    color: white !important;
-    border-radius: 50%;
-    font-weight: bold;
-}
-
-.days div.today {
-    background-color: #ffb347;
-    color: white;
-    font-weight: bold;
-}
-
-/* Efeito sutil ao passar o rato (hover) sobre os dias destacados */
-.days div.dia-medicamento:hover,
-.days div.dia-reposicao:hover {
-    filter: brightness(0.9);
-}
-
-/* ==========================================================================
-   MODAL E FORMULÁRIO
-   ========================================================================== */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 2000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.5);
-}
-
-.modal-content {
-    background-color: #fff;
-    margin: 5% auto;
-    padding: 25px;
-    border-radius: 20px;
-    width: 90%;
-    max-width: 380px;
-    position: relative;
-}
-
-.modal-content h2 {
-    margin-bottom: 20px;
-    font-size: 1.3rem;
-    color: #333;
-    text-align: center;
-}
-
-.close-button {
-    position: absolute;
-    right: 20px;
-    top: 15px;
-    font-size: 28px;
-    cursor: pointer;
-    color: #ccc;
-    line-height: 1;
-}
-
-.form-group {
-    text-align: left;
-    margin-bottom: 15px;
-}
-
-.scroll-page {
-    max-height: calc(90vh - 200px);
-    overflow-y: auto;
-    padding-right: 5px;
-    margin-bottom: 15px;
-    scrollbar-width: thin;
-    scrollbar-color: #d1d1d1 transparent;
-}
-
-.scroll-page::-webkit-scrollbar {
-    width: 5px;
-}
-
-.scroll-page::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.scroll-page::-webkit-scrollbar-thumb {
-    background-color: #d1d1d1;
-    border-radius: 10px;
-    transition: background-color 0.2s ease;
-}
-
-.scroll-page::-webkit-scrollbar-thumb:hover {
-    background-color: #b5b5b5;
-}
-
-.form-group label, .label-estilizada {
-    display: block;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: #888;
-    margin-bottom: 6px;
-    text-transform: uppercase;
-}
-
-.form-group input, 
-.input-horario {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #f0f0f0;
-    border-radius: 12px;
-    background-color: #f7f7f7;
-    font-size: 1rem;
-    margin-bottom: 15px;
-    outline: none;
-}
-
-/* Botão de salvar no modal - VERDE para consistência */
-.save-event-btn {
-    width: 100%;
-    background-color: #58cc02;
-    color: white;
-    border: none;
-    padding: 15px;
-    border-radius: 15px;
-    font-weight: 800;
-    font-size: 1rem;
-    text-transform: uppercase;
-    cursor: pointer;
-    box-shadow: 0 4px 0 #46a302;
-    display: block;
-}
-
-.alerta-reposicao-modal {
-    background-color: #e6f2ff; /* Fundo azul bem suave */
-    border-left: 5px solid #007bff; /* Borda esquerda com o azul padrão */
-    padding: 12px 15px;
-    margin-bottom: 15px;
-    border-radius: 8px;
-    color: #004085;
-    font-size: 0.9rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-}
-
-.alerta-reposicao-conteudo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.alerta-reposicao-conteudo span.icone-alerta {
-    font-size: 1.4rem;
-}
-
-.alerta-reposicao-conteudo span {
-    font-weight: bold;
-    color: #007bff;
-}
-
-/* ==========================================================================
-   TELA MEUS REMÉDIOS (GRID E CARDS)
-   ========================================================================== */
-.remedios-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
-    padding: 10px;
-}
-
-.card-remedio-geral {
-    box-sizing: border-box;
-    background: #fff;
-    border-radius: 15px;
-    padding: 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-    border-left: 5px solid #ffb347; 
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 220px; /* Mantém uma altura padrão elegante nos cartões */
-}
-
-.card-remedio-corpo h3 {
-    font-size: 1.2rem;
-    color: #333;
-    margin-bottom: 8px;
-}
-
-.card-remedio-corpo p {
-    font-size: 0.9rem;
-    color: #666;
-    margin-bottom: 4px;
-}
-
-/* Container de botões na base do card */
-.card-remedio-acoes {
-    display: flex;
-    gap: 10px;
-    margin-top: 5px;
-}
-
-.btn-acao {
-    flex: 1;
-    padding: 8px 12px;
-    border: none;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    font-weight: bold;
-    cursor: pointer;
-    text-transform: uppercase;
-    transition: background 0.2s;
-}
-
-/* Botão Editar - Cinza/Azul discreto */
-.btn-editar {
-    background-color: #e2e8f0;
-    color: #4a5568;
-}
-
-.btn-editar:hover {
-    background-color: #cbd5e1;
-}
-
-/* Botão Eliminar - Vermelho suave */
-.btn-eliminar {
-    background-color: #fee2e2;
-    color: #ef4444;
-}
-
-.btn-eliminar:hover {
-    background-color: #fca5a5;
-}
-
-/* ==========================================================================
-   ESTILOS PARA O CONTADOR INTERATIVO DE ESTOQUE
-   ========================================================================== */
-.card-estoque {
-    background: #fff;
-    border-radius: 15px;
-    padding: 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    border-left: 5px solid #58cc02; /* Verde padrão */
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-/* Quando o estoque estiver muito baixo (Ex: menos de 10 pílulas) */
-.card-estoque.estoque-baixo {
-    border-left-color: #ff4b4b;
-}
-
-.contador-container {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    background: #f7f7f7;
-    padding: 15px;
-    border-radius: 12px;
-    margin: 10px 0;
-}
-
-.btn-contador {
-    background: #58cc02;
-    color: white;
-    border: none;
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    font-size: 1.2rem;
-    font-weight: bold;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 3px 0 #46a302;
-}
-
-.btn-contador:active {
-    transform: translateY(3px);
-    box-shadow: none;
-}
-
-.numero-estoque {
-    font-size: 1.8rem;
-    font-weight: 800;
-    color: #333;
-}
-
-.btn-agendar-reposicao {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    padding: 10px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 0.9rem;
-    box-shadow: 0 3px 0 #0056b3;
-}
-
-/* Classe especial para o dia de reposição no Calendário */
-.calendar .days div.dia-reposicao {
-    background-color: #e7f3ff !important;
-    color: #007bff !important;
-    border: 2px solid #007bff !important;
-    font-weight: bold;
-    border-radius: 50%;
-}
-
-/* ==========================================================================
-   SIDEBAR & OUTROS
+   SIDEBAR & OVERLAY
    ========================================================================== */
 .sidebar {
     position: fixed;
@@ -504,6 +96,7 @@ header {
     z-index: 3000;
     transition: right 0.3s ease;
     padding: 20px;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
 }
 
 .sidebar.active {
@@ -512,14 +105,21 @@ header {
 
 .sidebar h3 {
     margin-bottom: 20px;
-    color: #000; /* Menu também em preto */
+    color: #000;
 }
 
 .menu-item {
     padding: 15px 0;
     border-bottom: 1px solid #f0f0f0;
     cursor: pointer;
+    color: #999;
     font-weight: 600;
+    list-style: none;
+    transition: color 0.2s;
+}
+
+.menu-item:hover {
+    color: #000;
 }
 
 .overlay {
@@ -537,50 +137,474 @@ header {
     display: block;
 }
 
-.content-section {
+/* ==========================================================================
+   CONTEÚDO PRINCIPAL & SECÇÕES
+   ========================================================================== */
+main {
     padding: 20px;
+}
+
+.content-section {
     max-width: 800px;
     margin: 0 auto;
 }
 
-.card-remedio-dia {
-    background-color: #fafafa;
-    border-left: 4px solid #58cc02;
-    padding: 10px 15px;
-    margin-bottom: 10px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+/* ==========================================================================
+   CALENDÁRIO INTERATIVO
+   ========================================================================== */
+.calendar {
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    padding: 20px;
 }
 
-.nome-medicamento {
-    display: block;
-    font-weight: 1000;
-    color: #222;
-    font-size: 2.0rem;
-}
-
-.card-info {
+.calendar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 20px;
+}
+
+.calendar-header button {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 5px 10px;
+    color: #555;
+    transition: color 0.2s;
+}
+
+.calendar-header button:hover {
+    color: #58cc02;
+}
+
+.calendar-header h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-weight: 700;
+    color: #888;
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+}
+
+.days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+}
+
+.days div {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: 600;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: background-color 0.2s, color 0.2s;
+    position: relative;
+}
+
+.days div:hover:not(.empty) {
+    background-color: #f0f0f0;
+}
+
+.days .empty {
+    cursor: default;
+    background: none;
+}
+
+/* DESTAQUE 1: Dia Atual (Verde) */
+.days .today {
+    background-color: #ff9f43 !important;
+    color: white !important;
+}
+
+/* DESTAQUE 2: Dia com Medicação Agendada (Cinza Suave) */
+.days .dia-medicamento {
+    background-color: #e2e8f0;
+    color: #334155;
+}
+
+/* DESTAQUE 3: Dia de Reposição Automática de Estoque (Azul Suave) */
+.days .dia-reposicao {
+    border: 2px solid #3b82f6;
+    background-color: #eff6ff;
+    color: #1d4ed8;
+}
+
+/* Combinação de Estados (Se for dia de remédio e reposição ao mesmo tempo) */
+.days .dia-medicamento.dia-reposicao {
+    background: linear-gradient(135deg, #e2e8f0 50%, #eff6ff 50%);
+    border: 2px solid #3b82f6;
+}
+
+/* ==========================================================================
+   TELA MEUS REMÉDIOS (GRID, CARDS E BOTÕES)
+   ========================================================================== */
+.remedios-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.card-meu-remedio {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    border-top: 4px solid #58cc02; /* Barra superior verde */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.card-meu-remedio h3 {
+    font-size: 1.15rem;
+    margin-bottom: 5px;
+    color: #111;
+}
+
+.slot-tag {
+    display: inline-block;
+    background-color: #f0f0f0;
+    color: #666;
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-bottom: 15px;
+    font-weight: 600;
+}
+
+.detalhes-remedio-lista {
+    font-size: 0.85rem;
+    color: #555;
+    margin-bottom: 15px;
+}
+
+.detalhes-remedio-lista div {
     margin-bottom: 4px;
+}
+
+.acoes-remedio-card {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid #f5f5f5;
+    padding-top: 12px;
+}
+
+.btn-editar-remedio, .btn-excluir-remedio {
+    border: none;
+    background: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 6px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+/* Botão Editar: Azul */
+.btn-editar-remedio {
+    color: #3b82f6;
+    background-color: #eff6ff;
+}
+.btn-editar-remedio:hover {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+/* Botão Excluir: Vermelho */
+.btn-excluir-remedio {
+    color: #ef4444;
+    background-color: #fef2f2;
+}
+.btn-excluir-remedio:hover {
+    background-color: #fee2e2;
+    color: #b91c1c;
+}
+
+/* ==========================================================================
+   TELA ESTOQUE INTERATIVO
+   ========================================================================== */
+.estoque-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.card-estoque {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    border-left: 5px solid #cbd5e1;
+    transition: border-color 0.3s, transform 0.2s;
+}
+
+/* Estado Crítico de Estoque Baixo (<= 5) */
+.card-estoque.estoque-baixo {
+    border-left-color: #ef4444;
+    background-color: #fffafb;
+}
+
+.card-estoque h3 {
+    font-size: 1.1rem;
+    margin-bottom: 5px;
+    color: #1e293b;
+}
+
+.contador-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.btn-contador {
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #334155;
+    width: 35px;
+    height: 35px;
+    border-radius: 8px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-contador:hover {
+    background-color: #cbd5e1;
+    color: #0f172a;
+}
+
+.numero-estoque {
+    font-size: 1.5rem;
+    font-weight: 700;
+    min-width: 40px;
+    text-align: center;
+    color: #0f172a;
+}
+
+/* ==========================================================================
+   MODAIS (CADASTRO E AGENDA DO DIA)
+   ========================================================================== */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.4);
+    z-index: 4000;
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 5% auto;
+    padding: 25px;
+    border-radius: 14px;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    text-align: left;
+}
+
+.close-button {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 1.6rem;
+    cursor: pointer;
+    color: #aaa;
+    transition: color 0.2s;
+}
+
+.close-button:hover {
+    color: #333;
+}
+
+/* ==========================================================================
+   ESTILOS DE FORMULÁRIO (DENTRO DO MODAL)
+   ========================================================================== */
+.form-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.form-group-row {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+}
+
+.form-group-row .form-group {
+    flex: 1;
+}
+
+.form-group-row .form-group input {
+    width: 100%;
+}
+
+label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #444;
+}
+
+.label-estilizada {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #444;
+    display: block;
+    margin-bottom: 5px;
+}
+
+input[type="text"],
+input[type="date"],
+input[type="number"],
+input[type="time"] {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    outline: none;
+    background-color: #fafafa;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+input:focus {
+    border-color: #58cc02;
+    background-color: #fff;
+}
+
+/* Horários Dinâmicos */
+#container-horarios {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.horario-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.input-horario {
+    flex: 1;
+}
+
+/* Botão Salvar */
+.save-event-btn {
+    margin-top: 20px;
+    width: 100%;
+    background-color: #000;
+    color: #fff;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.save-event-btn:hover {
+    background-color: #222;
+}
+
+/* ==========================================================================
+   ESTILOS DOS DETALHES DO DIA (MODAL AGENDA)
+   ========================================================================== */
+.card-remedio-dia {
+    background-color: #f8fafc;
+    border-left: 4px solid #58cc02;
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    border-radius: 0 8px 8px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+
+.nome-medicamento {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 1rem;
+}
+
+.card-info {
+    font-size: 0.8rem;
+    color: #64748b;
 }
 
 .horarios-container-lista {
     display: flex;
-    flex-direction: column;
-    gap: 6px; 
-    justify-content: flex-start;
-    margin-top: 8px;
+    gap: 5px;
+    flex-wrap: wrap;
 }
 
 .badge-slot {
-    background-color: #ffb347;
-    color: white;
-    font-size: 0.8rem;
-    padding: 4px 10px;
-    border-radius: 20px;
+    background-color: #e2e8f0;
+    color: #334155;
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+/* Bloco de Alerta Azul para Reposição Automática */
+.alerta-reposicao-modal {
+    background-color: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-left: 4px solid #3b82f6;
+    border-radius: 0 8px 8px 0;
+    padding: 12px 15px;
+    margin-bottom: 15px;
+}
+
+.alerta-reposicao-conteudo {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.85rem;
+    color: #1e3a8a;
+    line-height: 1.4;
+}
+
+.alerta-reposicao-conteudo .icone-alerta {
+    font-size: 1.1rem;
+    margin-top: 1px;
+}
+
+.alerta-reposicao-conteudo span {
+    text-decoration: underline;
     font-weight: bold;
-    display: inline-block;
-    white-space: nowrap;
 }

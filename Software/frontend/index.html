@@ -22,16 +22,12 @@
     <header>
         <div class="logo-container" id="logo-link" style="cursor: pointer;">
             <div class="logo-placeholder">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2\"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
             </div>
             <h1 class="brand-name">CIDRA</h1>
         </div>
-        <button class="remedioBtn" id="remedioBtn">
-            <span>+</span>
-        </button>
-        <button class="menu-toggle" id="menuBtn">
-            <span></span><span></span><span></span>
-        </button>
+        <button id="remedioBtn" class="remedioBtn">+</button>
+        <button id="menuBtn" class="menu-btn">&#9776;</button>
     </header>
 
     <main>
@@ -45,64 +41,60 @@
                 <div class="weekdays">
                     <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
                 </div>
-                <div class="days" id="days"></div>
+                <div id="days" class="days"></div>
             </div>
         </section>
 
-        <section id="tela-remedios" class="content-section">
-            <h2 style="text-align: center; margin-bottom: 20px; color: #333;">Meus Remédios</h2>
-            <div id="lista-geral-remedios" class="remedios-grid"></div>
+        <section id="tela-remedios" class="content-section" style="display: none;">
+            <h2>Meus Remédios</h2>
+            <div id="lista-geral-remedios" class="remedios-grid" style="margin-top: 20px;"></div>
         </section>
 
-        <section id="tela-estoque" class="content-section">
-            <h2 style="text-align: center; margin-bottom: 20px; color: #333;">Estoque</h2>
-            <div id="lista-estoque-remedios" class="remedios-grid"></div>
+        <section id="tela-estoque" class="content-section" style="display: none;">
+            <h2>Controle de Estoque Interativo</h2>
+            <p style="color: #666; font-size: 0.9rem; margin-bottom: 20px;">O sistema calcula automaticamente o dia de reposição com base nas pílulas restantes.</p>
+            <div id="lista-estoque-remedios" class="estoque-grid"></div>
+        </section>
+
+        <section id="tela-config" class="content-section" style="display: none;">
+            <h2>Configurações do Sistema</h2>
         </section>
     </main>
 
     <div id="modal-remedio" class="modal">
         <div class="modal-content">
             <span class="close-button" id="fechar-modal">&times;</span>
-            <h2 style="margin-bottom: 20px;">Agendar Remédio</h2>
-            
-            <form id="form-remedio">
-                <div class="scroll-page">
+            <h2>Agendar Medicamento</h2>
+            <form id="form-remedio" style="margin-top: 20px;">
+                <div class="form-grid">
                     <div class="form-group">
-                        <label for="nome-remedio">Nome do Remédio</label>
-                        <input type="text" id="nome-remedio" placeholder="Ex: Amoxicilina" required>
+                        <label for="nome-remedio">Nome do Medicamento</label>
+                        <input type="text" id="nome-remedio" placeholder="Ex: Paracetamol" required>
                     </div>
-    
                     <div class="form-group">
-                        <label for="slot">Slot no CIDRA</label>
-                        <input type="number" id="slot-remedio" min="1" max="8">
+                        <label for="slot-remedio">Slot CIDRA (Opcional)</label>
+                        <input type="text" id="slot-remedio" placeholder="Ex: Slot A">
                     </div>
-        
                     <div class="form-group">
-                       <label for="data-inicio">Data de Início</label>
-                       <input type="date" id="data-inicio" required>
+                        <label for="data-inicio">Data de Início</label>
+                        <input type="date" id="data-inicio" required>
                     </div>
-    
-                    <div class="form-group">
-                        <label for="duracao">Tomar por quanto tempo?</label>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="number" id="duracao" placeholder="Ex: 5" min="1" required style="flex: 1;">
+                    <div class="form-group-row">
+                        <div class="form-group">
+                            <label for="duracao">Duração</label>
+                            <input type="number" id="duracao" min="1" required style="flex: 1;">
                             <span style="font-weight: bold; color: #666; font-size: 0.9rem;">dia(s)</span>
                         </div>
-                    </div>
-    
-                    <div class="form-group">
-                        <label for="frequencia">Repetir a cada</label>
-                        <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="form-group">
+                            <label for="frequencia">Frequência</label>
                             <input type="number" id="frequencia" value="1" min="1" required style="flex: 1;">
                             <span style="font-weight: bold; color: #666; font-size: 0.9rem;">dia(s)</span>
                         </div>
                     </div>
-    
                     <div class="form-group">
                         <label for="qtd-pilulas">Quantidade (Pílulas/Dose)</label>
                         <input type="number" id="qtd-pilulas" placeholder="Ex: 1" min="1" required>
                     </div>
-    
                     <div id="container-horarios">
                         <label class="label-estilizada">Horários</label>
                         <div class="horario-item">
