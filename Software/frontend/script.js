@@ -32,6 +32,7 @@ let currentYear = date.getFullYear();
 
 // Array Global carregado do LocalStorage
 let remediosAgendados = JSON.parse(localStorage.getItem('remedios')) || [];
+let historicoTomadas = JSON.parse(localStorage.getItem('historicoTomadas')) || [];
 
 // ==========================================================================
 // NAVEGAÇÃO E INICIALIZAÇÃO DA SIDEBAR
@@ -55,7 +56,6 @@ menuItems.forEach(item => {
         const targetSection = document.getElementById(targetSectionId);
         if (targetSection) targetSection.style.display = 'block';
 
-        // Gatilhos para atualizar as telas específicas ao navegar
         if (targetSectionId === 'tela-remedios') {
             renderizarMeusRemedios();
         } else if (targetSectionId === 'tela-estoque') {
@@ -185,7 +185,6 @@ function renderCalendar() {
         const dayDiv = document.createElement("div");
         dayDiv.innerText = i;
 
-        // Destaque 1: Dia Atual (Laranja Pastel)
         if (i === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()) {
             dayDiv.classList.add("today");
         }
@@ -193,7 +192,6 @@ function renderCalendar() {
         const dataLoop = new Date(currentYear, currentMonth, i);
         const dataFormatada = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
 
-        // Destaque 2: Dias de Medicação (Cinza)
         const temRemedioParaTomar = remediosAgendados.some(remedio => {
             const inicio = new Date(remedio.dataInicio + 'T00:00:00');
             const fim = new Date(inicio);
@@ -211,7 +209,6 @@ function renderCalendar() {
             dayDiv.classList.add("dia-medicamento");
         }
 
-        // Destaque 3: Dias de Reposição Automática (Azul)
         const temReposicao = remediosAgendados.some(r => r.diasReposicao && r.diasReposicao.includes(dataFormatada));
         if (temReposicao) {
             dayDiv.classList.add("dia-reposicao");
@@ -220,10 +217,13 @@ function renderCalendar() {
         dayDiv.addEventListener('click', () => verRemediosDoDia(i, currentMonth, currentYear));
         daysContainer.appendChild(dayDiv);
     }
+
+    atualizarProximoHorarioTela();
 }
 
-if (prevBtn) prevBtn.addEventListener("click", () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(); });
-if (nextBtn) nextBtn.addEventListener("click", () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(); });
+// Ouvintes do calendário unificados (removidas as duplicatas do fim do arquivo)
+if (prevBtn) prevBtn.onclick = () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(); };
+if (nextBtn) nextBtn.onclick = () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(); };
 
 function verRemediosDoDia(dia, mes, ano) {
     const tituloLista = document.getElementById('titulo-lista-dia');
@@ -253,7 +253,6 @@ function verRemediosDoDia(dia, mes, ano) {
 
     const reposicoesDoDia = remediosAgendados.filter(r => r.diasReposicao && r.diasReposicao.includes(dataFormatada));
 
-    // Bloco de Aviso de Reposição
     if (reposicoesDoDia.length > 0) {
         reposicoesDoDia.forEach(remedio => {
             const alertaEstoque = document.createElement('div');
@@ -261,36 +260,44 @@ function verRemediosDoDia(dia, mes, ano) {
             alertaEstoque.innerHTML = `
                 <div class="alerta-reposicao-conteudo">
                     <span class="icone-alerta">📅</span>
-                    <div>
-                        <strong>Dia de Reposição!</strong><br>
-                        O estoque de <span>${remedio.nome}</span> atingiu o limite crítico e necessita de reabastecimento.
-                    </div>
+                    <div><strong>Dia de Reposição!</strong><br>O estoque de <span>${remedio.nome}</span> atingiu o limite crítico.</div>
                 </div>
             `;
             containerLista.appendChild(alertaEstoque);
         });
     }
 
-    // Listagem dos Medicamentos
     if (remediosDoDia.length > 0) {
         remediosDoDia.forEach(remedio => {
-            const item = document.createElement('div');
-            item.classList.add('card-remedio-dia');
+            remedio.horarios.forEach(hora => {
+                const item = document.createElement('div');
+                item.classList.add('card-remedio-dia');
 
-            const horarioBadges = remedio.horarios
-                .map(hora => `<span class="badge-slot">${hora}</span>`)
-                .join('');
+                const registroValido = historicoTomadas.find(h => h.dataFormatada === dataFormatada && h.remedioId === remedio.id && h.horario === hora);
 
-            item.innerHTML = `
-                <div>
-                    <span class="nome-medicamento">${remedio.nome}</span><br>
-                    <span class="card-info">Dose: ${remedio.quantidade} pílula(s)</span>
-                </div>
-                <div class="horarios-container-lista">
-                    ${horarioBadges}
-                </div>
-            `;
-            containerLista.appendChild(item);
+                const classeTomado = (registroValido && registroValido.status === 'tomado') ? 'ativo-verde' : '';
+                const classePular = (registroValido && registroValido.status === 'esquecido') ? 'ativo-vermelho' : '';
+
+                let textoStatus = '<span style="color: #64748b; font-size: 0.8rem;">Status: Pendente</span>';
+                if (registroValido) {
+                    textoStatus = registroValido.status === 'tomado' 
+                        ? '<span style="color: #22c55e; font-weight: bold; font-size: 0.8rem;">Status: Tomado ✓</span>' 
+                        : '<span style="color: #ef4444; font-weight: bold; font-size: 0.8rem;">Status: Não Tomado ✗</span>';
+                }
+
+                item.innerHTML = `
+                    <div>
+                        <span class="nome-medicamento">${remedio.nome}</span> <span class="badge-slot">${hora}</span><br>
+                        <span class="card-info">Dose: ${remedio.quantidade} pílula(s)</span><br>
+                        <div class="status-texto-container" style="margin-top: 4px;">${textoStatus}</div>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button class="btn-tomou ${classeTomado}" onclick="registrarTomada('${dataFormatada}', ${remedio.id}, '${hora}', 'tomado')">Tomar</button>
+                        <button class="btn-nao-tomou ${classePular}" onclick="registrarTomada('${dataFormatada}', ${remedio.id}, '${hora}', 'esquecido')">Pular</button>
+                    </div>
+                `;
+                containerLista.appendChild(item);
+            });
         });
     }
 
@@ -299,6 +306,197 @@ function verRemediosDoDia(dia, mes, ano) {
     }
     
     if (modalLista) modalLista.style.display = "block";
+}
+
+function registrarTomada(dataFormatada, remedioId, horario, status) {
+    if (remediosAgendados.length === 0) return;
+    
+    const indiceExistente = historicoTomadas.findIndex(h => h.dataFormatada === dataFormatada && h.remedioId === remedioId && h.horario === horario);
+    const remedio = remediosAgendados.find(r => r.id === remedioId);
+    const dose = parseInt(remedio?.quantidade) || 1;
+
+    if (remedio) {
+        if (remedio.estoque === undefined) remedio.estoque = 10;
+
+        if (indiceExistente !== -1) {
+            const statusAntigo = historicoTomadas[indiceExistente].status;
+
+            if (statusAntigo === 'tomado' && status === 'esquecido') {
+                remedio.estoque += dose;
+            }
+            else if (statusAntigo === 'esquecido' && status === 'tomado') {
+                remedio.estoque = Math.max(0, remedio.estoque - dose);
+            }
+            historicoTomadas[indiceExistente].status = status;
+        } else {
+            historicoTomadas.push({ dataFormatada, remedioId, horario, status });
+            if (status === 'tomado') {
+                remedio.estoque = Math.max(0, remedio.estoque - dose);
+            }
+        }
+
+        localStorage.setItem('historicoTomadas', JSON.stringify(historicoTomadas));
+        localStorage.setItem('remedios', JSON.stringify(remediosAgendados));
+        calcularAutomaticoReposicao(remedioId);
+    }
+
+    renderCalendar();
+    
+    const dataPartes = dataFormatada.split('-');
+    verRemediosDoDia(parseInt(dataPartes[2]), parseInt(dataPartes[1]) - 1, parseInt(dataPartes[0]));
+}
+
+function atualizarProximoHorarioTela() {
+    const container = document.getElementById('conteudo-proximo-horario');
+    if (!container) return;
+
+    const agora = new Date();
+    const hojeAno = agora.getFullYear();
+    const hojeMes = String(agora.getMonth() + 1).padStart(2, '0');
+    const hojeDia = String(agora.getDate()).padStart(2, '0');
+    const dataFormatadaHoje = `${hojeAno}-${hojeMes}-${hojeDia}`;
+
+    let todosHorariosDeHoje = [];
+
+    remediosAgendados.forEach(remedio => {
+        const inicio = new Date(remedio.dataInicio + 'T00:00:00');
+        const fim = new Date(inicio);
+        fim.setDate(inicio.getDate() + remedio.duracaoTratamento - 1);
+        
+        const hojeSemHora = new Date();
+        hojeSemHora.setHours(0,0,0,0);
+
+        if (hojeSemHora >= inicio && hojeSemHora <= fim) {
+            const diffTempo = Math.abs(hojeSemHora - inicio);
+            const diffDias = Math.ceil(diffTempo / (1000 * 60 * 60 * 24));
+            
+            if (diffDias % remedio.frequenciaDias === 0) {
+                remedio.horarios.forEach(hora => {
+                    const jaRespondido = historicoTomadas.some(h => 
+                        h.dataFormatada === dataFormatadaHoje && 
+                        h.remedioId === remedio.id && 
+                        h.horario === hora
+                    );
+
+                    if (!jaRespondido) {
+                        const [h, m] = hora.split(':').map(Number);
+                        const totalMinutos = (h * 60) + m;
+                        todosHorariosDeHoje.push({ hora, totalMinutos, remedio });
+                    }
+                });
+            }
+        }
+    });
+
+    if (todosHorariosDeHoje.length === 0) {
+        container.innerHTML = `<p style="color: #666; font-size: 0.9rem; margin: 0;">Não há mais nenhum medicamento pendente para o dia de hoje.</p>`;
+        return;
+    }
+
+    todosHorariosDeHoje.sort((a, b) => a.totalMinutos - b.totalMinutos);
+
+    const proximaHoraAlvo = todosHorariosDeHoje[0].hora;
+    const remediosDesteHorario = todosHorariosDeHoje.filter(item => item.hora === proximaHoraAlvo);
+
+    let htmlGerado = `<div class="hora-destaque">⏰ ${proximaHoraAlvo}</div>`;
+
+    remediosDesteHorario.forEach(item => {
+        const r = item.remedio;
+        
+        htmlGerado += `
+            <div class="linha-remedio-proximo">
+                <div>
+                    <strong style="color: #0f172a;">${r.nome}</strong>
+                    <span style="font-size: 0.8rem; color: #64748b; margin-left: 10px;">Dose: ${r.quantidade} pílula(s)</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-tomou" onclick="registrarTomadaProximo('${dataFormatadaHoje}', ${r.id}, '${proximaHoraAlvo}', 'tomado')">Tomar</button>
+                    <button class="btn-nao-tomou" onclick="registrarTomadaProximo('${dataFormatadaHoje}', ${r.id}, '${proximaHoraAlvo}', 'esquecido')">Pular</button>
+                </div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = htmlGerado;
+}
+
+function registrarTomadaProximo(dataFormatada, remedioId, horario, status) {
+    registrarTomada(dataFormatada, remedioId, horario, status);
+    atualizarProximoHorarioTela();
+}
+
+function verificarEGerenciarHorarios() {
+    const agora = new Date();
+    const hojeAno = agora.getFullYear();
+    const hojeMes = String(agora.getMonth() + 1).padStart(2, '0');
+    const hojeDia = String(agora.getDate()).padStart(2, '0');
+    const dataFormatadaHoje = `${hojeAno}-${hojeMes}-${hojeDia}`;
+    
+    // Pegamos os minutos totais do dia para comparar atrasos
+    const horaAtualMinutos = (agora.getHours() * 60) + agora.getMinutes();
+    
+    // Pegamos a string exata "HH:MM" para a notificação em tempo real
+    const horaMinutoAtualStr = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
+    
+    let houveAlteracaoNoHistorico = false;
+
+    remediosAgendados.forEach(remedio => {
+        const inicio = new Date(remedio.dataInicio + 'T00:00:00');
+        const fim = new Date(inicio);
+        fim.setDate(inicio.getDate() + remedio.duracaoTratamento - 1);
+        
+        const hojeSemHora = new Date(agora);
+        hojeSemHora.setHours(0,0,0,0);
+
+        // 1. Verifica se o tratamento está dentro do prazo de validade
+        if (hojeSemHora >= inicio && hojeSemHora <= fim) {
+            const diffTempo = Math.abs(hojeSemHora - inicio);
+            const diffDias = Math.ceil(diffTempo / (1000 * 60 * 60 * 24));
+            
+            // 2. Verifica se hoje é o dia correto de acordo com a frequência (ex: a cada 2 dias)
+            if (diffDias % remedio.frequenciaDias === 0) {
+                remedio.horarios.forEach(hora => {
+                    const [h, m] = hora.split(':').map(Number);
+                    const horarioRemedioMinutos = (h * 60) + m;
+
+                    // Verifica se este horário específico já foi manipulado pelo utilizador hoje
+                    const jaRespondido = historicoTomadas.some(h => 
+                        h.dataFormatada === dataFormatadaHoje && 
+                        h.remedioId === remedio.id && 
+                        h.horario === hora
+                    );
+
+                    if (!jaRespondido) {
+                        // CASO A: O minuto é EXATAMENTE o agora -> DISPARA NOTIFICAÇÃO
+                        if (hora === horaMinutoAtualStr) {
+                            dispararNotificacaoMedicamento(
+                                remedio.nome, 
+                                hora, 
+                                remedio.quantidade, 
+                                remedio.slot
+                            );
+                        }
+                        // CASO B: O horário já passou -> MARCA COMO ESQUECIDO/ATRASADO
+                        else if (horarioRemedioMinutos + 15 < horaAtualMinutos) {
+                            historicoTomadas.push({
+                                dataFormatada: dataFormatadaHoje,
+                                remedioId: remedio.id,
+                                horario: hora,
+                                status: 'esquecido'
+                            });
+                            houveAlteracaoNoHistorico = true;
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    // Se algum remédio antigo passou do limite e virou "esquecido", atualiza o ecrã
+    if (houveAlteracaoNoHistorico) {
+        localStorage.setItem('historicoTomadas', JSON.stringify(historicoTomadas));
+        renderCalendar();
+    }
 }
 
 // ==========================================================================
@@ -363,6 +561,11 @@ function editarRemedio(id) {
         containerHorarios.appendChild(novoDiv);
     });
 
+    const divAdicional = document.createElement('div');
+    divAdicional.classList.add('horario-item');
+    divAdicional.innerHTML = `<input type="time" class="input-horario" step="60">`;
+    containerHorarios.appendChild(divAdicional);
+
     const inputs = containerHorarios.querySelectorAll('.input-horario');
     if (inputs.length > 0) {
         inputs[inputs.length - 1].addEventListener('change', adicionarNovoCampoHorario);
@@ -422,8 +625,9 @@ function renderizarTelaEstoque() {
         container.appendChild(card);
     });
 }
+
 function atualizarEstoqueDigitado(id, valor) {
-    const remedio = remediosAgendados.find(r => r.id === id);
+    const remedio = remediosAgendados.find(r => r.id === Number(id));
     if (remedio) {
         let novoEstoque = parseInt(valor);
         if (isNaN(novoEstoque) || novoEstoque < 0) novoEstoque = 0;
@@ -442,12 +646,12 @@ function atualizarEstoqueDigitado(id, valor) {
                 }
             }
         }
-        calcularAutomaticoReposicao(id);
+        calcularAutomaticoReposicao(Number(id));
     }
 }
 
 function calcularAutomaticoReposicao(id) {
-    const remedio = remediosAgendados.find(r => r.id === id);
+    const remedio = remediosAgendados.find(r => r.id === Number(id));
     if (!remedio) return;
 
     const doseDiaria = (parseInt(remedio.quantidade) || 1) * remedio.horarios.length;
@@ -458,9 +662,9 @@ function calcularAutomaticoReposicao(id) {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    let dataPartida = dataInicioTratamento > hoje ? dataInicioTratamento : hoje;
-    const dataEsgotamento = new Date(dataPartida);
-    dataEsgotamento.setDate(dataPartida.getDate() + diasRestantes);
+    let dataPartina = dataInicioTratamento > hoje ? dataInicioTratamento : hoje;
+    const dataEsgotamento = new Date(dataPartina);
+    dataEsgotamento.setDate(dataPartina.getDate() + diasRestantes);
 
     const dataFinalFormatada = `${dataEsgotamento.getFullYear()}-${String(dataEsgotamento.getMonth() + 1).padStart(2, '0')}-${String(dataEsgotamento.getDate()).padStart(2, '0')}`;
     
@@ -473,5 +677,54 @@ function calcularAutomaticoReposicao(id) {
     }
 }
 
-// Inicializar o calendário ao abrir a página
+// ==========================================================================
+// NOTIFICAÇÃO
+// ==========================================================================
+function dispararNotificacaoMedicamento(nome, hora, quantidade, slot) {
+    if ("Notification" in window && Notification.permission === "granted") {
+        const titulo = `⏰ Hora do Medicamento: ${nome}`;
+        const opcoes = {
+            body: `Horário: ${hora}\nDose: ${quantidade} pílula(s)${slot ? `\nCompartimento: ${slot}` : ''}`,
+            icon: 'favicon.ico', // Se tiver um ícone no projeto, coloque o caminho aqui
+            tag: `${nome}-${hora}`, // Evita notificações duplicadas para o mesmo remédio no mesmo minuto
+            requireInteraction: true // A notificação fica visível até o utilizador fechar ou clicar
+        };
+
+        const notificacao = new Notification(titulo, opcoes);
+
+        // Opcional: Se o utilizador clicar na notificação, foca/abre a aba do app
+        notificacao.onclick = function() {
+            window.focus();
+            this.close();
+        };
+    }
+}
+
+// Solicitar permissão para notificações do sistema
+function solicitarPermissaoNotificacao() {
+    if ("Notification" in window) {
+        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+            Notification.requestPermission();
+        }
+    }
+}
+
+// ==========================================================================
+// GATILHOS DE INICIALIZAÇÃO DA APLICAÇÃO
+// ==========================================================================
+
+// 1. Pede permissão para as notificações se ainda não tiver pedido
+if ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied") {
+    Notification.requestPermission();
+}
+
+// 2. Renderiza o visual inicial do calendário
 renderCalendar();
+
+// 3. Executa a primeira verificação logo após abrir o app (com um ligeiro delay seguro)
+setTimeout(() => {
+    verificarEGerenciarHorarios();
+}, 300);
+
+// 4. Executa a verificação unificada a cada 60 segundos
+setInterval(verificarEGerenciarHorarios, 60000);

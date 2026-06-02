@@ -149,6 +149,70 @@ main {
     margin: 0 auto;
 }
 
+.content-section h2 {
+    background-color: #fff;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+    margin: 0 auto 20px auto;
+    display: table; /* Faz a caixa ajustar-se ao tamanho do texto */
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.content-section p {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* ==========================================================================
+   PRÓXIMO HORÁRIO (ACIMA DO CALENDÁRIO)
+   ========================================================================== */
+.proximo-horario-container {
+    background-color: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 50px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+    border-left: 5px solid #ff9f43; /* Destaque em laranja */
+    position: relative;
+}
+
+.proximo-horario-container h2 {
+    font-size: 1.1rem;
+    color: #1e293b;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.linha-remedio-proximo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background-color: #f8fafc;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    border-left: 3px solid #58cc02;
+}
+
+.linha-remedio-proximo:last-child {
+    margin-bottom: 0;
+}
+
+.hora-destaque {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #ff9f43;
+    background-color: #fff3e6;
+    padding: 4px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    margin-bottom: 12px;
+}
+
 /* ==========================================================================
    CALENDÁRIO INTERATIVO
    ========================================================================== */
@@ -224,10 +288,10 @@ main {
     background: none;
 }
 
-/* DESTAQUE 1: Dia Atual (Verde) */
+/* DESTAQUE 1: Dia Atual (Laranja) */
 .days .today {
     background-color: #ff9f43 !important;
-    color: white !important;
+    color: #fff !important;
 }
 
 /* DESTAQUE 2: Dia com Medicação Agendada (Cinza Suave) */
@@ -239,14 +303,62 @@ main {
 /* DESTAQUE 3: Dia de Reposição Automática de Estoque (Azul Suave) */
 .days .dia-reposicao {
     border: 2px solid #3b82f6;
-    background-color: #eff6ff;
+    background: #eff6ff;
     color: #1d4ed8;
 }
 
-/* Combinação de Estados (Se for dia de remédio e reposição ao mesmo tempo) */
-.days .dia-medicamento.dia-reposicao {
-    background: linear-gradient(135deg, #e2e8f0 50%, #eff6ff 50%);
+.days div.today.dia-reposicao {
+    /* Cria uma divisão diagonal/linear perfeita entre o cinza escuro e o azul */
+    background: #ff9f43;
+    color: #1d4ed8;
     border: 2px solid #3b82f6;
+}
+
+/* Combinação de Estados (Se for dia de remédio e reposição ao mesmo tempo) */
+.days div.dia-medicamento.dia-reposicao {
+    background: linear-gradient(135deg, #e2e8f0 50%, #eff6ff 50%);
+    color: #1d4ed8;
+    border: 2px solid #3b82f6;
+}
+
+.days div.today.dia-medicamento.dia-reposicao {
+    background: linear-gradient(135deg, #e2e8f0 50%, #ff9f43 50%);
+    color: #1d4ed8;
+    border: 2px solid #3b82f6;
+    text-shadow: none;
+}
+
+.numero-dia-texto {
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* Botões de Confirmação de Tomada */
+.btn-tomou, .btn-nao-tomou {
+    border: none;
+    font-size: 0.9rem;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+.btn-tomou {
+    background-color: #22c55e;
+    color: white;
+}
+.btn-tomou:hover {
+    background-color: #16a34a;
+}
+
+.btn-nao-tomou {
+    background-color: #ef4444;
+    color: white;
+}
+.btn-nao-tomou:hover {
+    background-color: #dc2626;
 }
 
 /* ==========================================================================
