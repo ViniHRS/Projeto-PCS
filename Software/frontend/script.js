@@ -31,8 +31,21 @@ let currentMonth = date.getMonth();
 let currentYear = date.getFullYear();
 
 // Array Global carregado do LocalStorage
-let remediosAgendados = JSON.parse(localStorage.getItem('remedios')) || [];
+let remediosAgendados = [];
 let historicoTomadas = JSON.parse(localStorage.getItem('historicoTomadas')) || [];
+
+// ==========================================================================
+// BACKEND
+// ==========================================================================
+async function carregarRemediosDoBackend() {
+    try {
+        const resposta = await fetch('http://localhost:3000/api/remedios');
+        remediosAgendados = await resposta.json();
+        renderCalendar(); // Renderiza o calendário após os dados chegarem
+    } catch (erro) {
+        console.error("Erro ao procurar dados no servidor:", erro);
+    }
+}
 
 // ==========================================================================
 // NAVEGAÇÃO E INICIALIZAÇÃO DA SIDEBAR
@@ -152,8 +165,17 @@ formRemedio.addEventListener('submit', (e) => {
     } else {
         const novoId = Date.now();
         const novoRemedio = { id: novoId, estoque: 30, diasReposicao: [], ...dadosForm };
-        remediosAgendados.push(novoRemedio);
-        calcularAutomaticoReposicao(novoId);
+        const resposta = await fetch('http://localhost:3000/api/remedios', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dadosForm)
+        });
+
+        if (resposta.ok) {
+            await carregarRemediosDoBackend(); // Recarrega a lista atualizada do servidor
+            modalRemedio.style.display = "none";
+            resetarFormulario();
+        }
     }
 
     localStorage.setItem('remedios', JSON.stringify(remediosAgendados));
@@ -718,13 +740,16 @@ if ("Notification" in window && Notification.permission !== "granted" && Notific
     Notification.requestPermission();
 }
 
-// 2. Renderiza o visual inicial do calendário
+// 2. Carregar o backend
+carregarRemediosDoBackend();
+
+// 3. Renderiza o visual inicial do calendário
 renderCalendar();
 
-// 3. Executa a primeira verificação logo após abrir o app (com um ligeiro delay seguro)
+// 4. Executa a primeira verificação logo após abrir o app (com um ligeiro delay seguro)
 setTimeout(() => {
     verificarEGerenciarHorarios();
 }, 300);
 
-// 4. Executa a verificação unificada a cada 60 segundos
+// 5. Executa a verificação unificada a cada 60 segundos
 setInterval(verificarEGerenciarHorarios, 60000);

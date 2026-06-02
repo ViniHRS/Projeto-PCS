@@ -1,0 +1,25 @@
+{
+  "name": "projeto-pcs",
+  "version": "1.0.0",
+  "description": "Repositório do projeto CIDRA (Caixa Inteligente Dispensora de Remédios Automática)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ViniHRS/Projeto-PCS.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ViniHRS/Projeto-PCS/issues"
+  },
+  "homepage": "https://github.com/ViniHRS/Projeto-PCS#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "mongoose": "^9.6.3"
+  }
+}
