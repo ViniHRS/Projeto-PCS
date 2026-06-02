@@ -31,19 +31,36 @@ let currentMonth = date.getMonth();
 let currentYear = date.getFullYear();
 
 // Array Global carregado do LocalStorage
+const API_URL = 'http://localhost:3000/api';
 let remediosAgendados = [];
-let historicoTomadas = JSON.parse(localStorage.getItem('historicoTomadas')) || [];
+let historicoTomadas = [];
 
 // ==========================================================================
 // BACKEND
 // ==========================================================================
 async function carregarRemediosDoBackend() {
     try {
-        const resposta = await fetch('http://localhost:3000/api/remedios');
-        remediosAgendados = await resposta.json();
-        renderCalendar(); // Renderiza o calendário após os dados chegarem
+        // Procura os remédios ativos
+        const respostaRemedios = await fetch(`${API_URL}/remedios`);
+        remediosAgendados = await respostaRemedios.json();
+
+        // Procura todo o histórico de tomadas
+        const respostaHistorico = await fetch(`${API_URL}/historico`);
+        historicoTomadas = await respostaHistorico.json();
+
+        // Atualiza a parte visual dinâmica
+        renderCalendar();
+        atualizarProximoHorarioTela();
+        
+        // Se o utilizador estiver na tela de estoque ou lista geral, atualiza em background
+        const telaEstoque = document.getElementById('tela-estoque');
+        if (telaEstoque && telaEstoque.style.display === 'block') renderizarTelaEstoque();
+        
+        const telaMeusRemedios = document.getElementById('tela-remedios');
+        if (telaMeusRemedios && telaMeusRemedios.style.display === 'block') renderizarMeusRemedios();
+
     } catch (erro) {
-        console.error("Erro ao procurar dados no servidor:", erro);
+        console.error("Erro na sincronização com o servidor backend:", erro);
     }
 }
 
@@ -96,7 +113,28 @@ function abrirModalRemedio() {
     modalRemedio.style.display = "block";
 }
 
-if (fecharModalCadastro) fecharModalCadastro.onclick = () => { modalRemedio.style.display = "none"; resetarFormulario(); };
+if (fecharModalCadastro) {
+    fecharModalCadastro.onclick = function() {
+        modalRemedio.style.display = "none";
+        overlay.style.display = "none";
+        
+        // CORREÇÃO: Limpa o formulário e o ID oculto para não misturar Cadastro com Edição
+        formRemedio.reset();
+        document.getElementById('id-remedio').value = ""; 
+        
+        // Reseta o container de horários deixando apenas o campo inicial limpo
+        containerHorarios.innerHTML = `
+            <label class="label-estilizada">Horários</label>
+            <div class="horario-item">
+                <input type="time" class="input-horario" step="60" required>
+            </div>
+        `;
+        // Reatribui o ouvinte ao primeiro campo gerado
+        const primeiroInput = containerHorarios.querySelector('.input-horario');
+        if (primeiroInput) primeiroInput.onchange = adicionarNovoCampoHorario;
+    };
+}
+
 if (fecharModalLista) fecharModalLista.onclick = () => { modalLista.style.display = "none"; };
 
 window.onclick = (event) => {
@@ -104,7 +142,14 @@ window.onclick = (event) => {
     if (event.target == modalLista) modalLista.style.display = "none";
 };
 
-if (remedioBtn) remedioBtn.addEventListener('click', abrirModalRemedio);
+if (remedioBtn) {
+    remedioBtn.onclick = function() {
+        abrirModalRemedio();
+        // Garante que o ID está vazio para o sistema saber que é um NOVO cadastro
+        document.getElementById('id-remedio').value = ""; 
+        formRemedio.reset();
+    };
+}
 
 function adicionarNovoCampoHorario() {
     const todosInputs = containerHorarios.querySelectorAll('.input-horario');
@@ -139,73 +184,151 @@ function resetarFormulario() {
 // ==========================================================================
 // SALVAMENTO DE MEDICAMENTOS (CADASTRO / EDIÇÃO)
 // ==========================================================================
-formRemedio.addEventListener('submit', (e) => {
-    e.preventDefault();
+let debounceTimeoutFormulario = null; // Controla o atraso para digitação no formulário
+if (formRemedio) {
+    formRemedio.onsubmit = async function(e) {
+        e.preventDefault(); // Impede a página de recarregar e quebrar a aplicação
 
-    const idExistente = document.getElementById('id-remedio').value;
-    const dadosForm = {
-        nome: document.getElementById('nome-remedio').value,
-        slot: document.getElementById('slot-remedio').value || "",
-        dataInicio: document.getElementById('data-inicio').value,
-        frequenciaDias: parseInt(document.getElementById('frequencia').value),
-        duracaoTratamento: parseInt(document.getElementById('duracao').value),
-        quantidade: parseInt(document.getElementById('qtd-pilulas').value),
-        horarios: Array.from(document.querySelectorAll('.input-horario'))
-                       .map(input => input.value)
-                       .filter(v => v !== "")
-    };
-
-    if (idExistente) {
-        const index = remediosAgendados.findIndex(r => r.id == idExistente);
-        if (index !== -1) {
-            const stockExistente = remediosAgendados[index].estoque !== undefined ? remediosAgendados[index].estoque : 10;
-            remediosAgendados[index] = { id: parseInt(idExistente), estoque: stockExistente, diasReposicao: [], ...dadosForm };
-            calcularAutomaticoReposicao(parseInt(idExistente));
-        }
-    } else {
-        const novoId = Date.now();
-        const novoRemedio = { id: novoId, estoque: 30, diasReposicao: [], ...dadosForm };
-        const resposta = await fetch('http://localhost:3000/api/remedios', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dadosForm)
+        // Coleta os horários preenchidos dinamicamente
+        const inputsHorarios = containerHorarios.querySelectorAll('.input-horario');
+        const horarios = [];
+        inputsHorarios.forEach(input => {
+            if (input.value) horarios.push(input.value);
         });
 
-        if (resposta.ok) {
-            await carregarRemediosDoBackend(); // Recarrega a lista atualizada do servidor
-            modalRemedio.style.display = "none";
-            resetarFormulario();
+        if (horarios.length === 0) {
+            alert("Por favor, adicione pelo menos um horário para o medicamento.");
+            return;
         }
-    }
 
-    localStorage.setItem('remedios', JSON.stringify(remediosAgendados));
-    modalRemedio.style.display = "none";
-    resetarFormulario();
-    renderCalendar();
-    renderizarMeusRemedios();
-});
+        // Captura o ID caso seja uma edição (campo hidden no HTML)
+        const idRemedio = document.getElementById('id-remedio').value;
+
+        // Monta o objeto com os dados estruturados idênticos ao Banco de Dados
+        const dadosRemedio = {
+            nome: document.getElementById('nome-remedio').value.trim(),
+            slot: parseInt(document.getElementById('slot-remedio').value) || null,
+            dataInicio: document.getElementById('data-inicio').value,
+            frequenciaDias: parseInt(document.getElementById('frequencia').value) || 1,
+            duracaoTratamento: parseInt(document.getElementById('duracao').value) || 1,
+            quantidade: parseInt(document.getElementById('qtd-pilulas').value) || 1,
+            horarios: horarios
+        };
+
+        try {
+            let url = `${API_URL}/remedios`;
+            let metodo = 'POST';
+
+            // Se existir um ID, significa que estamos EDITANDO um remédio existente
+            if (idRemedio) {
+                url = `${API_URL}/remedios/${idRemedio}`;
+                metodo = 'PUT';
+            } else {
+                // Se for um novo remédio, definimos um estoque inicial padrão (ex: 10 pílulas)
+                dadosRemedio.estoque = 10; 
+            }
+
+            console.log(`📡 Enviando dados do formulário (${metodo}):`, dadosRemedio);
+
+            const resposta = await fetch(url, {
+                method: metodo,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(dadosRemedio)
+            });
+
+            if (resposta.ok) {
+                console.log("✅ Agenda salva com sucesso no banco de dados!");
+                
+                // Limpa o formulário e reseta o campo de ID oculto
+                formRemedio.reset();
+                document.getElementById('id-remedio').value = "";
+                
+                fecharModalCadastro.click(); // Fecha o modal visualmente
+                
+                // Recarrega os dados imediatamente do backend para atualizar a tela
+                await carregarRemediosDoBackend(); 
+            } else {
+                const erroServidor = await resposta.json();
+                alert(`Erro ao salvar: ${erroServidor.message || 'Verifique os dados enviados.'}`);
+            }
+
+        } catch (erro) {
+            console.error("❌ Erro de rede ao submeter o formulário:", erro);
+            alert("Não foi possível conectar ao servidor backend.");
+        }
+    };
+}
+
+async function verificarSeRemedioJaExiste(nome) {
+    try {
+        // Faz uma busca simulada ou real no seu backend
+        // Ex: const resposta = await fetch(`${API_URL}/remedios/verificar?nome=${encodeURIComponent(nome)}`);
+        
+        // No seu caso local, podemos validar diretamente contra o array que já está na memória:
+        const existeNoArray = remediosAgendados.some(r => r.nome.toLowerCase() === nome.toLowerCase());
+
+        const mensagemAviso = document.getElementById('aviso-nome-duplicado'); // Elemento HTML opcional para alertas
+
+        if (existeNoArray) {
+            console.warn("⚠️ Este medicamento já está cadastrado no seu sistema!");
+            
+            // Exemplo de feedback visual para o utilizador:
+            if (mensagemAviso) {
+                mensagemAviso.innerText = "⚠️ Já tem um medicamento agendado com este nome.";
+                mensagemAviso.style.display = "block";
+            }
+        } else {
+            if (mensagemAviso) {
+                mensagemAviso.style.display = "none";
+            }
+        }
+    } catch (erro) {
+        console.error("Erro ao validar nome do remédio:", erro);
+    }
+}
 
 // ==========================================================================
 // RENDERIZAÇÃO E CLIQUE DO CALENDÁRIO
 // ==========================================================================
 function renderCalendar() {
     if (!daysContainer) return;
-    daysContainer.innerHTML = "";
     monthYear.innerText = `${months[currentMonth]} ${currentYear}`;
     
     const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
     const lastDay = new Date(currentYear, currentMonth + 1, 0).getDate();
     const today = new Date();
 
-    for (let i = 0; i < firstDayIndex; i++) {
-        const emptyDiv = document.createElement("div");
-        emptyDiv.classList.add("empty");
-        daysContainer.appendChild(emptyDiv);
+    // PRIMEIRA RENDERIZAÇÃO OU MUDANÇA DE MÊS: Só Reconstrói se o número de elementos mudou
+    const totalElementosNecessarios = firstDayIndex + lastDay;
+    if (daysContainer.children.length !== totalElementosNecessarios) {
+        daysContainer.innerHTML = "";
+
+        for (let i = 0; i < firstDayIndex; i++) {
+            const emptyDiv = document.createElement("div");
+            emptyDiv.classList.add("empty");
+            daysContainer.appendChild(emptyDiv);
+        }
+
+        for (let i = 1; i <= lastDay; i++) {
+            const dayDiv = document.createElement("div");
+            dayDiv.innerText = i;
+            dayDiv.setAttribute('data-dia', i); // Marcador para atualização rápida do Polling
+
+            // Evento fixo atrelado uma única vez ao elemento
+            dayDiv.addEventListener('click', () => verRemediosDoDia(i, currentMonth, currentYear));
+            daysContainer.appendChild(dayDiv);
+        }
     }
 
+    // ATUALIZAÇÃO RÁPIDA (POLLING SEGURO): Apenas manipula classes nos elementos existentes
     for (let i = 1; i <= lastDay; i++) {
-        const dayDiv = document.createElement("div");
-        dayDiv.innerText = i;
+        const dayDiv = daysContainer.querySelector(`div[data-dia="${i}"]`);
+        if (!dayDiv) continue;
+
+        // Reset inicial de classes dinâmicas
+        dayDiv.classList.remove("today", "dia-medicamento", "dia-reposicao");
 
         if (i === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear()) {
             dayDiv.classList.add("today");
@@ -214,6 +337,7 @@ function renderCalendar() {
         const dataLoop = new Date(currentYear, currentMonth, i);
         const dataFormatada = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
 
+        // Verifica remédios agendados de forma otimizada
         const temRemedioParaTomar = remediosAgendados.some(remedio => {
             const inicio = new Date(remedio.dataInicio + 'T00:00:00');
             const fim = new Date(inicio);
@@ -235,17 +359,38 @@ function renderCalendar() {
         if (temReposicao) {
             dayDiv.classList.add("dia-reposicao");
         }
-
-        dayDiv.addEventListener('click', () => verRemediosDoDia(i, currentMonth, currentYear));
-        daysContainer.appendChild(dayDiv);
     }
 
     atualizarProximoHorarioTela();
 }
 
-// Ouvintes do calendário unificados (removidas as duplicatas do fim do arquivo)
-if (prevBtn) prevBtn.onclick = () => { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } renderCalendar(); };
-if (nextBtn) nextBtn.onclick = () => { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } renderCalendar(); };
+let emEsperaTrocaMes = false;
+if (prevBtn) {
+    prevBtn.onclick = () => {
+        if (emEsperaTrocaMes) return; // Ignora o clique se clicou rápido demais
+
+        emEsperaTrocaMes = true;
+        currentMonth--; 
+        if (currentMonth < 0) { currentMonth = 11; currentYear--; } 
+        renderCalendar();
+
+        // Libera o botão novamente após 300 milissegundos
+        setTimeout(() => { emEsperaTrocaMes = false; }, 300);
+    };
+}
+
+if (nextBtn) {
+    nextBtn.onclick = () => {
+        if (emEsperaTrocaMes) return;
+
+        emEsperaTrocaMes = true;
+        currentMonth++; 
+        if (currentMonth > 11) { currentMonth = 0; currentYear++; } 
+        renderCalendar();
+
+        setTimeout(() => { emEsperaTrocaMes = false; }, 300);
+    };
+}
 
 function verRemediosDoDia(dia, mes, ano) {
     const tituloLista = document.getElementById('titulo-lista-dia');
@@ -295,7 +440,7 @@ function verRemediosDoDia(dia, mes, ano) {
                 const item = document.createElement('div');
                 item.classList.add('card-remedio-dia');
 
-                const registroValido = historicoTomadas.find(h => h.dataFormatada === dataFormatada && h.remedioId === remedio.id && h.horario === hora);
+                const registroValido = historicoTomadas.find(h => h.dataFormatada === dataFormatada && h.remedioId === remedio._id && h.horario === hora);
 
                 const classeTomado = (registroValido && registroValido.status === 'tomado') ? 'ativo-verde' : '';
                 const classePular = (registroValido && registroValido.status === 'esquecido') ? 'ativo-vermelho' : '';
@@ -314,8 +459,8 @@ function verRemediosDoDia(dia, mes, ano) {
                         <div class="status-texto-container" style="margin-top: 4px;">${textoStatus}</div>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
-                        <button class="btn-tomou ${classeTomado}" onclick="registrarTomada('${dataFormatada}', ${remedio.id}, '${hora}', 'tomado')">Tomar</button>
-                        <button class="btn-nao-tomou ${classePular}" onclick="registrarTomada('${dataFormatada}', ${remedio.id}, '${hora}', 'esquecido')">Pular</button>
+                        <button class="btn-tomou ${classeTomado}" onclick="registrarTomada('${dataFormatada}', '${remedio._id}', '${hora}', 'tomado')">Tomar</button>
+                        <button class="btn-nao-tomou ${classePular}" onclick="registrarTomada('${dataFormatada}', '${remedio._id}', '${hora}', 'esquecido')">Pular</button>
                     </div>
                 `;
                 containerLista.appendChild(item);
@@ -330,42 +475,33 @@ function verRemediosDoDia(dia, mes, ano) {
     if (modalLista) modalLista.style.display = "block";
 }
 
-function registrarTomada(dataFormatada, remedioId, horario, status) {
-    if (remediosAgendados.length === 0) return;
-    
-    const indiceExistente = historicoTomadas.findIndex(h => h.dataFormatada === dataFormatada && h.remedioId === remedioId && h.horario === horario);
-    const remedio = remediosAgendados.find(r => r.id === remedioId);
-    const dose = parseInt(remedio?.quantidade) || 1;
+async function registrarTomada(dataFormatada, remedioId, horario, status) {
+    try {
+        // Envia o registo em tempo real para a base de dados centralizada
+        const resposta = await fetch(`${API_URL}/historico`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                dataFormatada,
+                remedioId,
+                horario,
+                status
+            })
+        });
 
-    if (remedio) {
-        if (remedio.estoque === undefined) remedio.estoque = 10;
-
-        if (indiceExistente !== -1) {
-            const statusAntigo = historicoTomadas[indiceExistente].status;
-
-            if (statusAntigo === 'tomado' && status === 'esquecido') {
-                remedio.estoque += dose;
-            }
-            else if (statusAntigo === 'esquecido' && status === 'tomado') {
-                remedio.estoque = Math.max(0, remedio.estoque - dose);
-            }
-            historicoTomadas[indiceExistente].status = status;
+        if (resposta.ok) {
+            // Recarrega os remédios (porque o stock diminui no banco) e atualiza o ecrã
+            await carregarRemediosDoBackend();
+            
+            // Reabre ou atualiza a listagem do dia que o utilizador está a ver
+            const dataPartes = dataFormatada.split('-');
+            verRemediosDoDia(parseInt(dataPartes[2]), parseInt(dataPartes[1]) - 1, parseInt(dataPartes[0]));
         } else {
-            historicoTomadas.push({ dataFormatada, remedioId, horario, status });
-            if (status === 'tomado') {
-                remedio.estoque = Math.max(0, remedio.estoque - dose);
-            }
+            console.error("Servidor recusou o registo da tomada.");
         }
-
-        localStorage.setItem('historicoTomadas', JSON.stringify(historicoTomadas));
-        localStorage.setItem('remedios', JSON.stringify(remediosAgendados));
-        calcularAutomaticoReposicao(remedioId);
+    } catch (erro) {
+        console.error("Erro ao registar tomada na API:", erro);
     }
-
-    renderCalendar();
-    
-    const dataPartes = dataFormatada.split('-');
-    verRemediosDoDia(parseInt(dataPartes[2]), parseInt(dataPartes[1]) - 1, parseInt(dataPartes[0]));
 }
 
 function atualizarProximoHorarioTela() {
@@ -394,9 +530,10 @@ function atualizarProximoHorarioTela() {
             
             if (diffDias % remedio.frequenciaDias === 0) {
                 remedio.horarios.forEach(hora => {
+                    // Mudado para ._id
                     const jaRespondido = historicoTomadas.some(h => 
                         h.dataFormatada === dataFormatadaHoje && 
-                        h.remedioId === remedio.id && 
+                        h.remedioId === remedio._id && 
                         h.horario === hora
                     );
 
@@ -425,6 +562,7 @@ function atualizarProximoHorarioTela() {
     remediosDesteHorario.forEach(item => {
         const r = item.remedio;
         
+        // Mudado para r._id envolvido em aspas simples
         htmlGerado += `
             <div class="linha-remedio-proximo">
                 <div>
@@ -432,8 +570,8 @@ function atualizarProximoHorarioTela() {
                     <span style="font-size: 0.8rem; color: #64748b; margin-left: 10px;">Dose: ${r.quantidade} pílula(s)</span>
                 </div>
                 <div style="display: flex; gap: 8px;">
-                    <button class="btn-tomou" onclick="registrarTomadaProximo('${dataFormatadaHoje}', ${r.id}, '${proximaHoraAlvo}', 'tomado')">Tomar</button>
-                    <button class="btn-nao-tomou" onclick="registrarTomadaProximo('${dataFormatadaHoje}', ${r.id}, '${proximaHoraAlvo}', 'esquecido')">Pular</button>
+                    <button class="btn-tomou" onclick="registrarTomadaProximo('${dataFormatadaHoje}', '${r._id}', '${proximaHoraAlvo}', 'tomado')">Tomar</button>
+                    <button class="btn-nao-tomou" onclick="registrarTomadaProximo('${dataFormatadaHoje}', '${r._id}', '${proximaHoraAlvo}', 'esquecido')">Pular</button>
                 </div>
             </div>
         `;
@@ -444,7 +582,6 @@ function atualizarProximoHorarioTela() {
 
 function registrarTomadaProximo(dataFormatada, remedioId, horario, status) {
     registrarTomada(dataFormatada, remedioId, horario, status);
-    atualizarProximoHorarioTela();
 }
 
 function verificarEGerenciarHorarios() {
@@ -459,8 +596,6 @@ function verificarEGerenciarHorarios() {
     
     // Pegamos a string exata "HH:MM" para a notificação em tempo real
     const horaMinutoAtualStr = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
-    
-    let houveAlteracaoNoHistorico = false;
 
     remediosAgendados.forEach(remedio => {
         const inicio = new Date(remedio.dataInicio + 'T00:00:00');
@@ -481,10 +616,10 @@ function verificarEGerenciarHorarios() {
                     const [h, m] = hora.split(':').map(Number);
                     const horarioRemedioMinutos = (h * 60) + m;
 
-                    // Verifica se este horário específico já foi manipulado pelo utilizador hoje
+                    // CORRIGIDO: Agora compara corretamente usando o ._id do MongoDB Atlas
                     const jaRespondido = historicoTomadas.some(h => 
                         h.dataFormatada === dataFormatadaHoje && 
-                        h.remedioId === remedio.id && 
+                        h.remedioId === remedio._id && 
                         h.horario === hora
                     );
 
@@ -498,182 +633,246 @@ function verificarEGerenciarHorarios() {
                                 remedio.slot
                             );
                         }
-                        // CASO B: O horário já passou -> MARCA COMO ESQUECIDO/ATRASADO
+                        // CASO B: O horário já passou há mais de 15 minutos -> MARCA COMO ESQUECIDO
                         else if (horarioRemedioMinutos + 15 < horaAtualMinutos) {
-                            historicoTomadas.push({
-                                dataFormatada: dataFormatadaHoje,
-                                remedioId: remedio.id,
-                                horario: hora,
-                                status: 'esquecido'
-                            });
-                            houveAlteracaoNoHistorico = true;
+                            registrarTomada(dataFormatadaHoje, remedio._id, hora, 'esquecido');
                         }
                     }
                 });
             }
         }
     });
-
-    // Se algum remédio antigo passou do limite e virou "esquecido", atualiza o ecrã
-    if (houveAlteracaoNoHistorico) {
-        localStorage.setItem('historicoTomadas', JSON.stringify(historicoTomadas));
-        renderCalendar();
-    }
 }
 
 // ==========================================================================
-// TELA SECÇÃO: MEUS REMÉDIOS (RENDERIZAÇÃO, EDIÇÃO E REMOÇÃO)
+// TELA SECÇÃO: MEUS REMÉDIOS (ADICIONADO PARA CORRIGIR O DISPLAY)
 // ==========================================================================
 function renderizarMeusRemedios() {
-    const container = document.getElementById('lista-geral-remedios');
+    const container = document.getElementById('lista-remedios-geral'); // Certifique-se de que este ID existe no seu HTML
     if (!container) return;
-    
-    container.innerHTML = "";
 
     if (remediosAgendados.length === 0) {
-        container.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #666; padding: 20px;">Nenhum medicamento agendado atualmente.</p>`;
+        container.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #666; padding: 20px;">Nenhum medicamento cadastrado até o momento.</p>`;
         return;
     }
 
+    // Mantém a estrutura base sem resetar de forma destrutiva (.innerHTML = '')
+    if (container.children.length === 0 || container.querySelector('p')) {
+        container.innerHTML = '';
+    }
+
     remediosAgendados.forEach(remedio => {
-        const card = document.createElement('div');
-        card.classList.add('card-meu-remedio');
+        // Procura se o card deste remédio já está desenhado no ecrã
+        let card = container.querySelector(`.card-meu-remedio[data-id="${remedio._id}"]`);
 
-        const listaHorarios = remedio.horarios.map(h => `<span class="badge-slot">${h}</span>`).join(' ');
+        const textoHorarios = remedio.horarios && remedio.horarios.length > 0 ? remedio.horarios.join(', ') : 'Não definidos';
+        const dataFormatadaStr = remedio.dataInicio ? remedio.dataInicio.split('-').reverse().join('/') : '---';
 
-        card.innerHTML = `
-            <div>
-                <h3>${remedio.nome}</h3>
-                ${remedio.slot ? `<span class="slot-tag">${remedio.slot}</span>` : ''}
-                <div class="detalhes-remedio-lista">
-                    <div>📅 <strong>Início:</strong> ${remedio.dataInicio.split('-').reverse().join('/')}</div>
-                    <div>⏳ <strong>Duração:</strong> ${remedio.duracaoTratamento} dia(s)</div>
-                    <div>🔄 <strong>Frequência:</strong> A cada ${remedio.frequenciaDias} dia(s)</div>
-                    <div>💊 <strong>Dose:</strong> ${remedio.quantidade} pílula(s)</div>
-                    <div style="margin-top: 8px;">⏰ <strong>Horários:</strong> ${listaHorarios}</div>
+        if (!card) {
+            // Se o card não existe, cria-o pela primeira vez
+            card = document.createElement('div');
+            card.classList.add('card-meu-remedio');
+            card.setAttribute('data-id', remedio._id);
+            container.appendChild(card);
+
+            card.innerHTML = `
+                <div class="info-remedio-corpo">
+                    <h3 class="remedio-titulo-txt">${remedio.nome}</h3>
+                    <p><strong>Compartimento (Slot):</strong> <span class="remedio-slot-txt">${remedio.slot || 'Nenhum'}</span></p>
+                    <p><strong>Início:</strong> <span class="remedio-data-txt">${dataFormatadaStr}</span></p>
+                    <p><strong>Frequência:</strong> A cada <span class="remedio-freq-txt">${remedio.frequenciaDias}</span> dia(s)</p>
+                    <p><strong>Duração:</strong> <span class="remedio-duracao-txt">${remedio.duracaoTratamento}</span> dias</p>
+                    <p><strong>Dose por horário:</strong> <span class="remedio-qtd-txt">${remedio.quantidade}</span> pílula(s)</p>
+                    <p><strong>Horários Agendados:</strong> <span class="remedio-horas-txt" style="color: #0284c7; font-weight: 500;">${textoHorarios}</span></p>
                 </div>
-            </div>
-            <div class="acoes-remedio-card">
-                <button class="btn-editar-remedio" onclick="editarRemedio(${remedio.id})">Editar</button>
-                <button class="btn-excluir-remedio" onclick="eliminarRemedio(${remedio.id})">Eliminar</button>
-            </div>
-        `;
-        container.appendChild(card);
+                <div class="acoes-remedio-container" style="display: flex; gap: 8px; margin-top: 12px; border-top: 1px dashed #eee; padding-top: 8px;">
+                    <button class="btn-editar-remedio" style="background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Editar</button>
+                    <button class="btn-deletar-remedio" style="background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Excluir</button>
+                </div>
+            `;
+
+            // Atribui as funções aos botões gerados
+            card.querySelector('.btn-editar-remedio').addEventListener('click', () => prepararEdicaoRemedio(remedio));
+            card.querySelector('.btn-deletar-remedio').addEventListener('click', () => deletarRemedioDoBackend(remedio._id));
+        } else {
+            // Se o card já existe, apenas atualiza o conteúdo de texto para evitar que a tela pisque com o Polling
+            card.querySelector('.remedio-titulo-txt').innerText = remedio.nome;
+            card.querySelector('.remedio-slot-txt').innerText = remedio.slot || 'Nenhum';
+            card.querySelector('.remedio-data-txt').innerText = dataFormatadaStr;
+            card.querySelector('.remedio-freq-txt').innerText = remedio.frequenciaDias;
+            card.querySelector('.remedio-duracao-txt').innerText = remedio.duracaoTratamento;
+            card.querySelector('.remedio-qtd-txt').innerText = remedio.quantidade;
+            card.querySelector('.remedio-horas-txt').innerText = textoHorarios;
+        }
+    });
+
+    // Remove do ecrã cards de remédios que possam ter sido deletados de outra aba/dispositivo
+    const todosCardsMeusRemedios = container.querySelectorAll('.card-meu-remedio');
+    todosCardsMeusRemedios.forEach(card => {
+        const idCard = card.getAttribute('data-id');
+        const existeAinda = remediosAgendados.some(r => r._id === idCard);
+        if (!existeAinda) {
+            card.remove();
+        }
     });
 }
 
-function editarRemedio(id) {
-    const remedio = remediosAgendados.find(r => r.id === id);
-    if (!remedio) return;
-
-    document.getElementById('id-remedio').value = remedio.id;
+// Auxiliar para preencher o formulário automaticamente quando clicar em Editar
+function prepararEdicaoRemedio(remedio) {
+    abrirModalRemedio();
+    
+    document.getElementById('id-remedio').value = remedio._id;
     document.getElementById('nome-remedio').value = remedio.nome;
     document.getElementById('slot-remedio').value = remedio.slot || "";
     document.getElementById('data-inicio').value = remedio.dataInicio;
-    document.getElementById('duracao').value = remedio.duracaoTratamento;
     document.getElementById('frequencia').value = remedio.frequenciaDias;
+    document.getElementById('duracao').value = remedio.duracaoTratamento;
     document.getElementById('qtd-pilulas').value = remedio.quantidade;
 
-    containerHorarios.innerHTML = `<label class="label-estilizada">Horários</label>`;
-    
+    // Reconstrói os campos de horários dinamicamente no formulário
+    containerHorarios.innerHTML = '<label class="label-estilizada">Horários</label>';
     remedio.horarios.forEach((hora, index) => {
-        const novoDiv = document.createElement('div');
-        novoDiv.classList.add('horario-item');
-        novoDiv.innerHTML = `<input type="time" class="input-horario" value="${hora}" step="60" ${index === 0 ? 'required' : ''}>`;
-        containerHorarios.appendChild(novoDiv);
+        const div = document.createElement('div');
+        div.classList.add('horario-item');
+        div.innerHTML = `<input type="time" class="input-horario" value="${hora}" step="60">`;
+        containerHorarios.appendChild(div);
     });
 
-    const divAdicional = document.createElement('div');
-    divAdicional.classList.add('horario-item');
-    divAdicional.innerHTML = `<input type="time" class="input-horario" step="60">`;
-    containerHorarios.appendChild(divAdicional);
-
+    // Adiciona o gatilho no último campo para manter a lógica de novos inputs dinâmicos
     const inputs = containerHorarios.querySelectorAll('.input-horario');
     if (inputs.length > 0) {
         inputs[inputs.length - 1].addEventListener('change', adicionarNovoCampoHorario);
     }
-
-    modalRemedio.style.display = "block";
 }
 
-function eliminarRemedio(id) {
-    if (confirm("Tem a certeza que deseja apagar este agendamento?")) {
-        remediosAgendados = remediosAgendados.filter(r => r.id !== id);
-        localStorage.setItem('remedios', JSON.stringify(remediosAgendados));
-        renderizarMeusRemedios();
-        renderCalendar();
+// Auxiliar para enviar o comando de remoção para a sua API Node/Express
+async function deletarRemedioDoBackend(id) {
+    if (!confirm("Tem certeza que deseja excluir este medicamento permanentemente?")) return;
+
+    try {
+        const resposta = await fetch(`${API_URL}/remedios/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (resposta.ok) {
+            console.log("✅ Medicamento removido com sucesso.");
+            await carregarRemediosDoBackend();
+        } else {
+            alert("Não foi possível excluir o medicamento do servidor.");
+        }
+    } catch (erro) {
+        console.error("Erro na requisição DELETE:", erro);
     }
 }
 
 // ==========================================================================
-// TELA SECÇÃO: ESTOQUE INTERATIVO E REPOSIÇÃO AUTOMÁTICA
+// TELA SECÇÃO: ESTOQUE INTERATIVO E REPOSIÇÃO AUTOMÁTICA (CORRIGIDO)
 // ==========================================================================
+let remediomSendoEditadoId = null;
+let debounceTimeoutEstoque = null; // Controla o atraso para evitar flood na API
+
 function renderizarTelaEstoque() {
     const container = document.getElementById('lista-estoque-remedios');
     if (!container) return;
-    container.innerHTML = "";
 
     if (remediosAgendados.length === 0) {
         container.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #666; padding: 20px;">Nenhum remédio agendado para controlo de estoque.</p>`;
         return;
     }
 
+    // REMOVIDO o container.innerHTML = '' daqui para os cards não sumirem no Polling
+
     remediosAgendados.forEach(remedio => {
         if (remedio.estoque === undefined) remedio.estoque = 10;
         if (!remedio.diasReposicao) remedio.diasReposicao = [];
 
-        const card = document.createElement('div');
-        card.classList.add('card-estoque');
-        if (remedio.estoque <= 5) card.classList.add('estoque-baixo');
-
         const doseDiaria = (parseInt(remedio.quantidade) || 1) * remedio.horarios.length;
+        const textoData = remedio.diasReposicao.length > 0 ? remedio.diasReposicao[0].split('-').reverse().join('/') : 'A calcular...';
 
-        card.innerHTML = `
-            <h3>${remedio.nome}</h3>
-            <p style="font-size: 0.85rem; color: #666;">Consumo diário: <strong>${doseDiaria} pílula(s)</strong></p>
-            <div class="contador-container">
-                <input type="number" 
-                class="numero-estoque" 
-                id="qtd-estoque-${remedio.id}" 
-                value="${remedio.estoque}" 
-                min="0" 
-                onchange="atualizarEstoqueDigitado(${remedio.id}, this.value)" 
-                style="width: 70px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px; text-align: center;">
-            </div>
-            <div style="font-size: 0.85rem; color: #444; border-top: 1px dashed #ddd; padding-top: 8px;" id="lista-datas-${remedio.id}">
-                📅 <strong>Reposição prevista:</strong> ${remedio.diasReposicao.length > 0 ? remedio.diasReposicao[0].split('-').reverse().join('/') : 'A calcular...'}
-            </div>
-        `;
-        container.appendChild(card);
+        // Procura se o card já existe na tela
+        let card = container.querySelector(`.card-estoque[data-id="${remedio._id}"]`);
+        
+        if (!card) {
+            // Se não existe (ex: primeiro carregamento), cria o card do zero
+            card = document.createElement('div');
+            card.classList.add('card-estoque');
+            card.setAttribute('data-id', remedio._id);
+            container.appendChild(card);
+            
+            card.innerHTML = `
+                <h3>${remedio.nome}</h3>
+                <p style="font-size: 0.85rem; color: #666;">Consumo diário: <strong class="dose-diaria-txt">${doseDiaria} pílula(s)</strong></p>
+                <div class="contador-container">
+                    <input type="number" 
+                    class="numero-estoque" 
+                    id="qtd-estoque-${remedio._id}" 
+                    value="${remedio.estoque}" 
+                    min="0" 
+                    style="width: 70px; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px; text-align: center;">
+                </div>
+                <div style="font-size: 0.85rem; color: #444; border-top: 1px dashed #ddd; padding-top: 8px;" class="previsao-reposicao-txt">
+                    📅 <strong>Reposição prevista:</strong> ${textoData}
+                </div>
+            `;
+
+            const inputElement = card.querySelector('.numero-estoque');
+            
+            inputElement.addEventListener('focus', () => { 
+                remediomSendoEditadoId = remedio._id; 
+            });
+
+            inputElement.addEventListener('input', (e) => { 
+                remediomSendoEditadoId = remedio._id; 
+                atualizarEstoqueDigitado(remedio._id, e.target.value); 
+            });
+
+            inputElement.addEventListener('blur', () => {
+                setTimeout(() => {
+                    if (remediomSendoEditadoId === remedio._id) {
+                        remediomSendoEditadoId = null;
+                    }
+                }, 2000); // Aumentado para 2 segundos para dar tempo do Debounce terminar de salvar no Atlas
+            });
+        } else {
+            // SE O CARD JÁ EXISTE: Atualiza os textos de previsão e consumo normalmente (O CARD NÃO SUMIRÁ)
+            const previsaoTxt = card.querySelector('.previsao-reposicao-txt');
+            if (previsaoTxt) {
+                previsaoTxt.innerHTML = `📅 <strong>Reposição prevista:</strong> ${textoData}`;
+            }
+
+            const doseTxt = card.querySelector('.dose-diaria-txt');
+            if (doseTxt) {
+                doseTxt.innerText = `${doseDiaria} pílula(s)`;
+            }
+
+            // CRUCIAL: Só atualiza o número escrito se o usuário NÃO estiver mexendo nele agora
+            const inputElement = card.querySelector('.numero-estoque');
+            if (inputElement && remediomSendoEditadoId !== remedio._id) {
+                inputElement.value = remedio.estoque;
+            }
+        }
+
+        // Atualiza a cor de alerta crítico sem reconstruir o card
+        if (remedio.estoque <= 5) {
+            card.classList.add('estoque-baixo');
+        } else {
+            card.classList.remove('estoque-baixo');
+        }
+    });
+
+    // Remove cards da tela que porventura tenham sido deletados do banco
+    const todosCardsNaTela = container.querySelectorAll('.card-estoque');
+    todosCardsNaTela.forEach(card => {
+        const idCard = card.getAttribute('data-id');
+        const aindaExiste = remediosAgendados.some(r => r._id === idCard);
+        if (!aindaExiste) {
+            card.remove();
+        }
     });
 }
 
-function atualizarEstoqueDigitado(id, valor) {
-    const remedio = remediosAgendados.find(r => r.id === Number(id));
-    if (remedio) {
-        let novoEstoque = parseInt(valor);
-        if (isNaN(novoEstoque) || novoEstoque < 0) novoEstoque = 0;
-        
-        remedio.estoque = novoEstoque;
-        localStorage.setItem('remedios', JSON.stringify(remediosAgendados));
-
-        const inputEstoque = document.getElementById(`qtd-estoque-${id}`);
-        if (inputEstoque) {
-            const cardElement = inputEstoque.closest('.card-estoque');
-            if (cardElement) {
-                if (remedio.estoque <= 5) {
-                    cardElement.classList.add('estoque-baixo');
-                } else {
-                    cardElement.classList.remove('estoque-baixo');
-                }
-            }
-        }
-        calcularAutomaticoReposicao(Number(id));
-    }
-}
-
 function calcularAutomaticoReposicao(id) {
-    const remedio = remediosAgendados.find(r => r.id === Number(id));
+    const remedio = remediosAgendados.find(r => r._id === id);
     if (!remedio) return;
 
     const doseDiaria = (parseInt(remedio.quantidade) || 1) * remedio.horarios.length;
@@ -684,20 +883,69 @@ function calcularAutomaticoReposicao(id) {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
 
-    let dataPartina = dataInicioTratamento > hoje ? dataInicioTratamento : hoje;
-    const dataEsgotamento = new Date(dataPartina);
-    dataEsgotamento.setDate(dataPartina.getDate() + diasRestantes);
+    let dataPartida = dataInicioTratamento > hoje ? dataInicioTratamento : hoje;
+    const dataEsgotamento = new Date(dataPartida);
+    dataEsgotamento.setDate(dataPartida.getDate() + diasRestantes);
 
     const dataFinalFormatada = `${dataEsgotamento.getFullYear()}-${String(dataEsgotamento.getMonth() + 1).padStart(2, '0')}-${String(dataEsgotamento.getDate()).padStart(2, '0')}`;
     
     remedio.diasReposicao = [dataFinalFormatada];
-    localStorage.setItem('remedios', JSON.stringify(remediosAgendados));
 
-    const lbl = document.getElementById(`lista-datas-${id}`);
-    if (lbl) {
-        lbl.innerHTML = `📅 <strong>Reposição prevista:</strong> ${dataFinalFormatada.split('-').reverse().join('/')}`;
+    const card = document.querySelector(`.card-estoque[data-id="${id}"]`);
+    if (card) {
+        const previsaoTxt = card.querySelector('.previsao-reposicao-txt');
+        if (previsaoTxt) {
+            previsaoTxt.innerHTML = `📅 <strong>Reposição prevista:</strong> ${dataFinalFormatada.split('-').reverse().join('/')}`;
+        }
     }
 }
+
+function atualizarEstoqueDigitado(id, valor) {
+    remediomSendoEditadoId = id; // Trava o Polling para o card não piscar
+
+    let novoEstoque = parseInt(valor);
+    if (isNaN(novoEstoque) || novoEstoque < 0) {
+        novoEstoque = 0;
+    }
+
+    // 1. ATUALIZAÇÃO LOCAL IMEDIATA: Garante que os cálculos visuais fiquem certos na hora
+    const remedioLocal = remediosAgendados.find(r => r._id === id);
+    if (remedioLocal) {
+        remedioLocal.estoque = novoEstoque;
+    }
+
+    const card = document.querySelector(`.card-estoque[data-id="${id}"]`);
+    if (card) {
+        if (novoEstoque <= 5) card.classList.add('estoque-baixo');
+        else card.classList.remove('estoque-baixo');
+    }
+    calcularAutomaticoReposicao(id);
+
+    // 2. ANTI-FLOOD (DEBOUNCE): Cancela o envio anterior se o utilizador ainda estiver a clicar
+    if (debounceTimeoutEstoque) {
+        clearTimeout(debounceTimeoutEstoque);
+    }
+
+    // Define um atraso de 600ms após o ÚLTIMO clique para finalmente enviar ao servidor
+    debounceTimeoutEstoque = setTimeout(async () => {
+        try {
+            console.log(`📡 [Debounce] Enviando atualização consolidada para o banco:`, { estoque: novoEstoque });
+            
+            const resposta = await fetch(`${API_URL}/remedios/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estoque: novoEstoque })
+            });
+
+            if (!resposta.ok) {
+                console.error("❌ O servidor rejeitou a sincronização do estoque.");
+            }
+        } catch (erro) {
+            console.error("❌ Erro de rede ao conectar com a API:", erro);
+        }
+    }, 600); // 600 milissegundos de espera de segurança
+}
+
 
 // ==========================================================================
 // NOTIFICAÇÃO
@@ -707,7 +955,7 @@ function dispararNotificacaoMedicamento(nome, hora, quantidade, slot) {
         const titulo = `⏰ Hora do Medicamento: ${nome}`;
         const opcoes = {
             body: `Horário: ${hora}\nDose: ${quantidade} pílula(s)${slot ? `\nCompartimento: ${slot}` : ''}`,
-            icon: 'favicon.ico', // Se tiver um ícone no projeto, coloque o caminho aqui
+            //icon: 'favicon.ico', // Se tiver um ícone no projeto, coloque o caminho aqui
             tag: `${nome}-${hora}`, // Evita notificações duplicadas para o mesmo remédio no mesmo minuto
             requireInteraction: true // A notificação fica visível até o utilizador fechar ou clicar
         };
@@ -722,15 +970,6 @@ function dispararNotificacaoMedicamento(nome, hora, quantidade, slot) {
     }
 }
 
-// Solicitar permissão para notificações do sistema
-function solicitarPermissaoNotificacao() {
-    if ("Notification" in window) {
-        if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-            Notification.requestPermission();
-        }
-    }
-}
-
 // ==========================================================================
 // GATILHOS DE INICIALIZAÇÃO DA APLICAÇÃO
 // ==========================================================================
@@ -740,16 +979,24 @@ if ("Notification" in window && Notification.permission !== "granted" && Notific
     Notification.requestPermission();
 }
 
-// 2. Carregar o backend
+// 2. Executa imediatamente quando o site abre
 carregarRemediosDoBackend();
 
-// 3. Renderiza o visual inicial do calendário
-renderCalendar();
-
-// 4. Executa a primeira verificação logo após abrir o app (com um ligeiro delay seguro)
-setTimeout(() => {
-    verificarEGerenciarHorarios();
-}, 300);
-
-// 5. Executa a verificação unificada a cada 60 segundos
+// 3. Ciclo de Verificação de Horários (roda a cada minuto para as notificações do navegador)
 setInterval(verificarEGerenciarHorarios, 60000);
+
+// 4. Polling de Sincronização do Banco de Dados (roda a cada 5 segundos)
+// Isso garante que se o utilizador clicar no botão da CAIXA FÍSICA, o site atualiza a cor sozinho!
+setInterval(carregarRemediosDoBackend, 5000);
+
+// 5. Debounce de resize de tela
+let debounceTimeoutResize = null;
+window.addEventListener('resize', () => {
+    if (debounceTimeoutResize) clearTimeout(debounceTimeoutResize);
+
+    debounceTimeoutResize = setTimeout(() => {
+        console.log("📐 [Debounce] Tela reajustada. Recalculando componentes necessários...");
+        // Se o seu calendário precisar redesenhar para se ajustar ao layout mobile/desktop:
+        renderCalendar(); 
+    }, 250); // 250ms é o tempo padrão perfeito para resize
+});
