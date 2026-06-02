@@ -18,9 +18,9 @@ Acesso das funções por meio do **Menu Hambúrguer** na lateral direita
 ### Notificações
 O aplicativo tem as notificações que irão alertar o usuário sobre:
 1. O horário de tomar remédio;
-[Notificação Remédio](./doc/images/Notificacao-Remedio.png)
+![Notificação Remédio](./doc/images/Notificacao-Remedio.png)
 2. A data de reestoque;
-[Notificação Reestoque](./doc/images/Notificacao-Reestoque.png)
+![Notificação Reestoque](./doc/images/Notificacao-Reestoque.png)
 
 ### Backend
 
