@@ -31,7 +31,7 @@ let currentMonth = date.getMonth();
 let currentYear = date.getFullYear();
 
 // Array Global carregado do LocalStorage
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'https://cidraapp.onrender.com/api';
 let remediosAgendados = [];
 let historicoTomadas = [];
 let notificacoesReestoqueFeitasHoje = [];
