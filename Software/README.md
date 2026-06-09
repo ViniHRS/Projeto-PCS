@@ -22,6 +22,7 @@ O aplicativo tem as notificações que irão alertar o usuário sobre:
 2. A data de reestoque;
 ![Notificação Reestoque](./doc/images/Notificacao-Reestoque.png)
 
-### Backend
 
-Separação de 
+# Backend
+
+Separação das informações do usuário  

@@ -2,39 +2,57 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const aedes = require('aedes')(); // Broker MQTT leve
+const net = require('net');       // Necessário para o servidor TCP do MQTT
 
 const app = express();
 
-// Middlewares Globais
+// Middlewares
 app.use(cors());
 app.use(express.json());
 
-// Conexão ao MongoDB Atlas utilizando o seu ClusterCIDRA
+// ==========================================================================
+// CONEXÃO COM BANCO DE DADOS (MongoDB Atlas)
+// ==========================================================================
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log('✅ Conectado com sucesso ao MongoDB Atlas (ClusterCIDRA)!'))
-    .catch((err) => console.error('❌ Erro crítico de conexão à Base de Dados:', err));
+    .then(() => console.log('✅ Conectado ao MongoDB Atlas (ClusterCIDRA)!'))
+    .catch((err) => console.error('❌ Erro na conexão ao MongoDB:', err));
 
 // ==========================================================================
-// IMPORTAÇÃO DAS ROTAS DA API
+// CONFIGURAÇÃO DO BROKER MQTT (Porta 1883)
 // ==========================================================================
-const remedioRoutes = require('./routes/remedioRoutes');
-const historicoRoutes = require('./routes/historicoRoutes');
-const caixaRoutes = require('./routes/caixaRoutes');
+const mqttServer = net.createServer(aedes.handle);
+const MQTT_PORT = 1883;
 
-// ==========================================================================
-// MAPEAMENTO DOS ENDPOINTS (VINCULAÇÃO)
-// ==========================================================================
-app.use('/api/remedios', remedioRoutes);   // Endpoints do site para medicamentos
-app.use('/api/historico', historicoRoutes); // Endpoints do site para o histórico
-app.use('/api/caixa', caixaRoutes);         // Endpoints exclusivos da caixa física IoT
-
-// Rota padrão para teste no navegador
-app.get('/', (req, res) => {
-    res.json({ message: "API CIDRA App online e pronta para operar!" });
+mqttServer.listen(MQTT_PORT, () => {
+    console.log(`🚀 Broker MQTT ativo na porta ${MQTT_PORT}`);
 });
 
-// Inicialização do Servidor
+// Lógica de recebimento: O ESP32 publica no tópico 'cidra/caixa/status'
+aedes.on('publish', (packet, client) => {
+    if (client && packet.topic === 'cidra/caixa/status') {
+        const payload = packet.payload.toString();
+        console.log(`📡 Status recebido do ESP32: ${payload}`);
+        
+        // Aqui você pode converter o JSON e chamar seu caixaController
+        // Exemplo: const data = JSON.parse(payload);
+        // await registrarTomadaNoBanco(data);
+    }
+});
+
+// ==========================================================================
+// ROTAS DA API
+// ==========================================================================
+app.use('/api/remedios', require('./routes/remedioRoutes'));
+app.use('/api/historico', require('./routes/historicoRoutes'));
+app.use('/api/caixa', require('./routes/caixaRoutes'));
+
+app.get('/', (req, res) => {
+    res.json({ message: "API CIDRA App + Broker MQTT online!" });
+});
+
+// Inicialização
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor backend a rodar em http://localhost:${PORT}`);
+    console.log(`🌍 Servidor Web rodando em http://localhost:${PORT}`);
 });
