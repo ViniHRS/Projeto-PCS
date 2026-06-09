@@ -1,4 +1,5 @@
 //Teste feito no Wokwi por Alexandre Shiota
+//Link da simulação: https://wokwi.com/projects/465659878553668609
 #include <LiquidCrystal_I2C.h>
 #include <ESP32Servo.h>
 
