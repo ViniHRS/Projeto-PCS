@@ -18,7 +18,7 @@ Teste feito por Vinícius Sakuma
 
 // Configurações
 const int passosPorVolta = 2048; // Passos por volta do motor 28BYJ-48
-#define anguloServo 60
+#define anguloServo 50
 
 // Inicialização dos objetos
 Servo meuServo;
