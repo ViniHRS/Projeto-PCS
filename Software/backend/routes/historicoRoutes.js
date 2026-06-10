@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Historico = require('../models/Historico');
+const historicoController = require('../controllers/historicoController');
 
 // POST: Regista que um remédio foi tomado (chamado quando o utilizador clica na notificação)
 router.post('/', async (req, res) => {

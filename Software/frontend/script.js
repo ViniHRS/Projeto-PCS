@@ -37,6 +37,49 @@ let historicoTomadas = [];
 let notificacoesReestoqueFeitasHoje = [];
 let notificouAoIniciar = false;
 
+
+// ==========================================================================
+// CONFIGURAÇÃO SEGURA DO MQTT (CORREÇÃO DA QUEDA DA PÁGINA)
+// ==========================================================================
+let mqttClient = null;
+
+function inicializarMQTT() {
+    // Verifica se a biblioteca foi carregada corretamente pelo index.html
+    if (typeof mqtt === 'undefined') {
+        console.error("❌ Erro: A biblioteca MQTT.js não foi carregada no index.html. O MQTT ficará desativado, mas a página continuará funcionando.");
+        return;
+    }
+
+    // Se estiver rodando local (http:// ou file://), usa ws:// na porta 8000
+    // Se estivesse em produção segura https://, usaria wss:// na porta 8884
+    const brokerUrl = 'ws://broker.hivemq.com:8000/mqtt';
+    const clientId = 'cidra_web_' + Math.random().toString(16).substr(2, 8);
+
+    try {
+        mqttClient = mqtt.connect(brokerUrl, { 
+            clientId: clientId,
+            connectTimeout: 5000 
+        });
+
+        mqttClient.on('connect', () => {
+            console.log('📡 Conectado ao Broker MQTT com sucesso via Web (Porta 8000)!');
+            mqttClient.subscribe('cidra/hardware/confirmacao');
+        });
+
+        mqttClient.on('message', (topic, message) => {
+            if (topic === 'cidra/hardware/confirmacao') {
+                console.log("🤖 Confirmação física do ESP32 recebida:", message.toString());
+            }
+        });
+
+        mqttClient.on('error', (err) => {
+            console.error("⚠️ Erro no cliente MQTT:", err);
+        });
+    } catch (e) {
+        console.error("❌ Falha crítica ao inicializar conexão MQTT:", e);
+    }
+}
+
 // ==========================================================================
 // BACKEND
 // ==========================================================================
@@ -84,7 +127,7 @@ async function carregarRemediosDoBackend() {
             if (telaCalendario && telaCalendario.style.display !== 'none') renderCalendar();
 
             const telaEstoque = document.getElementById('tela-estoque');
-            if (telaEstoque && telaEstoque.style.display === 'block') renderGridEstoqueCompartimentos();
+            if (telaEstoque && telaEstoque.style.display === 'block') renderizarTelaEstoque();
 
             const telaMeusRemedios = document.getElementById('tela-remedios');
             if (telaMeusRemedios && telaMeusRemedios.style.display === 'block') renderizarMeusRemedios();
@@ -475,6 +518,9 @@ function verRemediosDoDia(dia, mes, ano) {
                     h.dataFormatada === dataFormatada &&   // É o registro deste dia
                     h.horario === hora                     // É o registro desta hora específica
                 );
+
+                const idDoRegistro = registroValido ? registroValido._id : null;
+                const statusDoRegistro = registroValido ? registroValido.status : 'pendente';
                 const classeTomado = (registroValido && registroValido.status === 'tomado') ? 'ativo-verde' : '';
                 const classePular = (registroValido && registroValido.status === 'esquecido') ? 'ativo-vermelho' : '';
 
@@ -485,7 +531,7 @@ function verRemediosDoDia(dia, mes, ano) {
                         textoStatus = '<span style="color: #22c55e; font-weight: bold; font-size: 0.8rem;">Status: Tomado ✓</span>';
                     } else if (registroValido.status === 'esquecido') {
                         textoStatus = '<span style="color: #ef4444; font-weight: bold; font-size: 0.8rem;">Status: Não Tomado ✗</span>';
-                    }
+                    } else if (registroValido.status === 'pendente') {}
                 } else {
                     // Se não houver registro no histórico, o status é "Pendente" (o padrão)
                     // Se quiser ver se o sistema está buscando o histórico, force um log aqui:
@@ -496,14 +542,6 @@ function verRemediosDoDia(dia, mes, ano) {
                         <span class="nome-medicamento">${remedio.nome}</span> <span class="badge-slot">${hora}</span><br>
                         <span class="card-info">Dose: ${remedio.quantidade} pílula(s)</span><br>
                         <div class="status-texto-container" style="margin-top: 4px;">${textoStatus}</div>
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                            ${registroValido ? `
-                            <button onclick="alternarStatus('${registroValido._id}', '${registroValido.status}')" 
-                                    style="margin-top: 10px; cursor: pointer; ${registroValido.status === 'tomado' ? 'color: #ef4444;' : 'color: #22c55e;'}">
-                                Alterar para ${registroValido.status === 'tomado' ? 'Não Tomado' : 'Tomado'}
-                            </button>
-                        ` : ''}                    
                     </div>
                 `;
                 containerLista.appendChild(item);
@@ -518,25 +556,6 @@ function verRemediosDoDia(dia, mes, ano) {
     if (modalLista) modalLista.style.display = "block";
 }
 
-async function alternarStatus(historicoId, statusAtual) {
-    const novoStatus = statusAtual === 'tomado' ? 'esquecido' : 'tomado';
-
-    try {
-        const resposta = await fetch(`${API_URL}/historico/${historicoId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: novoStatus })
-        });
-
-        if (resposta.ok) {
-            console.log("Status atualizado com sucesso!");
-            // Recarrega a tela para mostrar a mudança
-            await carregarRemediosDoBackend();
-        }
-    } catch (erro) {
-        console.error("Erro ao alternar status:", erro);
-    }
-}
 
 function atualizarProximoHorarioTela() {
     const container = document.getElementById('conteudo-proximo-horario');
@@ -1053,6 +1072,7 @@ if ("Notification" in window && Notification.permission !== "granted" && Notific
 }
 
 // 2. Executa imediatamente quando o site abre
+inicializarMQTT();
 carregarRemediosDoBackend();
 const telaCalendario = document.getElementById('tela-calendario');
 if (telaCalendario && telaCalendario.style.display !== 'none') renderCalendar();

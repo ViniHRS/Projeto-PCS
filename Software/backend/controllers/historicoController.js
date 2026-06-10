@@ -38,8 +38,7 @@ const registrarTomadaDaCaixa = async (dadosDaCaixa) => {
                 remedioId,
                 dataFormatada,
                 horario,
-                status,
-                origem: 'caixa_fisica'
+                status
             });
             await registo.save();
         }
@@ -55,24 +54,6 @@ const registrarTomadaDaCaixa = async (dadosDaCaixa) => {
     } catch (err) {
         console.error("Erro ao registrar tomada da caixa:", err.message);
         throw err;
-    }
-};
-
-const atualizarStatusManual = async (req, res) => {
-    const { id } = req.params; // ID do documento no Histórico
-    const { status } = req.body; // 'tomado' ou 'esquecido'
-
-    try {
-        const registro = await Historico.findById(id);
-        if (!registro) return res.status(404).json({ message: "Registro não encontrado" });
-
-        registro.status = status;
-        registro.origem = 'web_manual'; // Marcamos que foi alterado via site
-        await registro.save();
-
-        res.json({ success: true, registro });
-    } catch (err) {
-        res.status(500).json({ message: "Erro ao atualizar: " + err.message });
     }
 };
 
