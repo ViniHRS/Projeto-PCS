@@ -37,7 +37,6 @@ const registrarTomada = async (req, res) => {
                 dataFormatada,
                 horario,
                 status,
-                origem: 'web'
             });
             await registo.save();
         }

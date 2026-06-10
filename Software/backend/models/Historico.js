@@ -18,11 +18,6 @@ const HistoricoSchema = new mongoose.Schema({
         type: String, 
         enum: ['tomado', 'esquecido'], // Só aceita um destes dois valores
         required: true 
-    },
-    origem: {
-        type: String,
-        enum: ['web', 'caixa_fisica'],
-        default: 'web' // Ajuda a rastrear se o utilizador tomou pelo site ou pelo botão físico
     }
 }, { timestamps: true });
 

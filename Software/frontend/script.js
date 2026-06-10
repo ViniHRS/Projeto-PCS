@@ -483,8 +483,8 @@ function verRemediosDoDia(dia, mes, ano) {
                         <div class="status-texto-container" style="margin-top: 4px;">${textoStatus}</div>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
-                        <button class="btn-tomou ${classeTomado}" onclick="registrarTomada('${dataFormatada}', '${remedio._id}', '${hora}', 'tomado')">Tomar</button>
-                        <button class="btn-nao-tomou ${classePular}" onclick="registrarTomada('${dataFormatada}', '${remedio._id}', '${hora}', 'esquecido')">Pular</button>
+                        <button class="btn-tomou ${classeTomado}" onclick="tomarRemedio('${remedio._id}', '${hora}')">Tomar</button>
+                        <button class="btn-nao-tomou ${classePular}" onclick="pularRemedio('${remedio._id}', '${hora}')">Pular</button>
                     </div>
                 `;
                 containerLista.appendChild(item);
@@ -499,32 +499,52 @@ function verRemediosDoDia(dia, mes, ano) {
     if (modalLista) modalLista.style.display = "block";
 }
 
-async function registrarTomada(dataFormatada, remedioId, horario, status) {
+
+async function tomarRemedio(remedioId, hora) {
     try {
-        // Envia o registo em tempo real para a base de dados centralizada
-        const resposta = await fetch(`${API_URL}/historico`, {
+        // 1. Envia comando para a Caixa Física (via API que publica no MQTT)
+        //await fetch(`${API_URL}/api/caixa/comando`, {
+        //    method: 'POST',
+        //    headers: { 'Content-Type': 'application/json' },
+        //    body: JSON.stringify({ remedioId: remedioId, acao: 'tomar' })
+        //});
+
+        // 2. Registra no Histórico do MongoDB
+        await fetch(`${API_URL}/api/historico`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                dataFormatada,
-                remedioId,
-                horario,
-                status
+            body: JSON.stringify({ 
+                remedioId: remedioId,
+                data: new Date(),
+                horario: hora,
+                status: 'tomado'
             })
         });
 
-        if (resposta.ok) {
-            // Recarrega os remédios (porque o stock diminui no banco) e atualiza o ecrã
-            await carregarRemediosDoBackend();
-            
-            // Reabre ou atualiza a listagem do dia que o utilizador está a ver
-            const dataPartes = dataFormatada.split('-');
-            verRemediosDoDia(parseInt(dataPartes[2]), parseInt(dataPartes[1]) - 1, parseInt(dataPartes[0]));
-        } else {
-            console.error("Servidor recusou o registo da tomada.");
-        }
-    } catch (erro) {
-        console.error("Erro ao registar tomada na API:", erro);
+        alert("Remédio tomado com sucesso!");
+        location.reload(); // Recarrega a página para atualizar a lista
+    } catch (error) {
+        console.error("Erro ao processar ação 'Tomar':", error);
+    }
+}
+
+async function pularRemedio(remedioId, hora) {
+    try {
+        // Registra apenas no Histórico como "pulado"
+        await fetch(`${API_URL}/api/historico`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                remedioId: remedioId, 
+                status: 'pulado',
+                data: new Date() 
+            })
+        });
+
+        alert("Remédio pulado.");
+        location.reload();
+    } catch (error) {
+        console.error("Erro ao processar ação 'Pular':", error);
     }
 }
 
@@ -594,18 +614,14 @@ function atualizarProximoHorarioTela() {
                     <span style="font-size: 0.8rem; color: #64748b; margin-left: 10px;">Dose: ${r.quantidade} pílula(s)</span>
                 </div>
                 <div style="display: flex; gap: 8px;">
-                    <button class="btn-tomou" onclick="registrarTomadaProximo('${dataFormatadaHoje}', '${r._id}', '${proximaHoraAlvo}', 'tomado')">Tomar</button>
-                    <button class="btn-nao-tomou" onclick="registrarTomadaProximo('${dataFormatadaHoje}', '${r._id}', '${proximaHoraAlvo}', 'esquecido')">Pular</button>
+                    <button class="btn-tomou" onclick="tomarRemedio('${r._id}', '${r.hora}')">Tomar</button>
+                    <button class="btn-nao-tomou" onclick="pularRemedio('${r._id}', '${r.hora}')">Pular</button>
                 </div>
             </div>
         `;
     });
 
     container.innerHTML = htmlGerado;
-}
-
-function registrarTomadaProximo(dataFormatada, remedioId, horario, status) {
-    registrarTomada(dataFormatada, remedioId, horario, status);
 }
 
 function verificarEGerenciarHorarios() {
