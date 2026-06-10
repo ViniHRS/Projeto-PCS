@@ -1,56 +1,79 @@
 const Historico = require('../models/Historico');
 const Remedio = require('../models/Remedio');
 
-// 1. Listar todo o histórico de tomadas
+/**
+ * 1. Listar histórico (Mantido para fins de consulta do front-end)
+ */
 const obterHistorico = async (req, res) => {
     try {
-        const historico = await Historico.find().populate('remedioId', 'nome slot');
+        const historico = await Historico.find().sort({ createdAt: -1 });
         res.json(historico);
     } catch (err) {
         res.status(500).json({ message: "Erro ao obter histórico: " + err.message });
     }
 };
 
-// 2. Registar ou atualizar uma tomada (Tomado / Esquecido) vinda do site
-const registrarTomada = async (req, res) => {
-    const { dataFormatada, remedioId, horario, status } = req.body;
+/**
+ * 2. Registrar tomada vinda da CAIXA FÍSICA (Processa o sinal do ESP32)
+ * Esta função deve ser chamada quando o seu server.js receber a mensagem MQTT
+ */
+const registrarTomadaDaCaixa = async (dadosDaCaixa) => {
+    const { remedioId, dataFormatada, horario, status } = dadosDaCaixa;
 
     try {
-        // Valida se o remédio existe
         const remedio = await Remedio.findById(remedioId);
-        if (!remedio) {
-            return res.status(404).json({ message: "Medicamento não encontrado" });
-        }
+        if (!remedio) throw new Error("Medicamento não encontrado");
 
-        // Procura se já existe um registo para este remédio no mesmo dia e hora
+        // Procura se já existe um registro para evitar duplicidade
         let registo = await Historico.findOne({ dataFormatada, remedioId, horario });
 
         if (registo) {
-            // Se o utilizador mudou de ideias no site (ex: de esquecido para tomado)
+            // Se já existe, atualiza o status (caso tenha sido corrigido ou reprocessado)
             registo.status = status;
-            registo.origem = 'web';
+            registo.origem = 'caixa_fisica';
             await registo.save();
         } else {
-            // Cria um novo registo no histórico
+            // Cria novo registro vindo da caixa
             registo = new Historico({
                 remedioId,
                 dataFormatada,
                 horario,
                 status,
+                origem: 'caixa_fisica'
             });
             await registo.save();
         }
 
-        // Se o status foi marcado como 'tomado', deduz a quantidade do stock do remédio
+        // Se o status foi 'tomado', atualiza o estoque
         if (status === 'tomado') {
             remedio.estoque = Math.max(0, remedio.estoque - (remedio.quantidade || 1));
             await remedio.save();
+            console.log(`✅ Registro processado: ${remedio.nome} tomado (Caixa). Estoque atualizado.`);
         }
 
-        res.json({ success: true, registo });
+        return registo;
     } catch (err) {
-        res.status(400).json({ message: "Erro ao registar tomada: " + err.message });
+        console.error("Erro ao registrar tomada da caixa:", err.message);
+        throw err;
     }
 };
 
-module.exports = { obterHistorico, registrarTomada };
+const atualizarStatusManual = async (req, res) => {
+    const { id } = req.params; // ID do documento no Histórico
+    const { status } = req.body; // 'tomado' ou 'esquecido'
+
+    try {
+        const registro = await Historico.findById(id);
+        if (!registro) return res.status(404).json({ message: "Registro não encontrado" });
+
+        registro.status = status;
+        registro.origem = 'web_manual'; // Marcamos que foi alterado via site
+        await registro.save();
+
+        res.json({ success: true, registro });
+    } catch (err) {
+        res.status(500).json({ message: "Erro ao atualizar: " + err.message });
+    }
+};
+
+module.exports = { obterHistorico, registrarTomadaDaCaixa };

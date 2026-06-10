@@ -29,7 +29,7 @@ mqttServer.listen(MQTT_PORT, () => {
 });
 
 // Lógica de recebimento: O ESP32 publica no tópico 'cidra/caixa/status'
-aedes.on('publish', (packet, client) => {
+aedes.on('publish', async (packet, client) => {
     if (client && packet.topic === 'cidra/caixa/status') {
         const payload = packet.payload.toString();
         console.log(`📡 Status recebido do ESP32: ${payload}`);
@@ -37,6 +37,10 @@ aedes.on('publish', (packet, client) => {
         // Aqui você pode converter o JSON e chamar seu caixaController
         // Exemplo: const data = JSON.parse(payload);
         // await registrarTomadaNoBanco(data);
+        // Importe o controller
+        const historicoController = require('./controllers/historicoController');
+        // Agora o await funcionará porque a função é async
+        await historicoController.registrarTomadaDaCaixa(payload);
     }
 });
 
@@ -53,6 +57,9 @@ app.get('/', (req, res) => {
 
 // Inicialização
 const PORT = process.env.PORT || 3000;
+const  { realizarManutencaoHistorico } = require('./services/historicoService.js')
+realizarManutencaoHistorico();
 app.listen(PORT, () => {
     console.log(`🌍 Servidor Web rodando em http://localhost:${PORT}`);
 });
+

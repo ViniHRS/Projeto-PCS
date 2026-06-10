@@ -111,7 +111,10 @@ router.put('/:id', async (req, res) => {
 // ==========================================================================
 router.delete('/:id', async (req, res) => {
     try {
-        const remedioDeletado = await Remedio.findByIdAndDelete(req.params.id);
+        const id = req.params.id;
+        const remedioDeletado = await Remedio.findByIdAndDelete(id);
+        await Historico.deleteMany({ remedioId: id }); 
+        res.json({ message: "Remédio e seu histórico deletados com sucesso" });
         if (!remedioDeletado) {
             return res.status(404).json({ message: "Medicamento não encontrado." });
         }

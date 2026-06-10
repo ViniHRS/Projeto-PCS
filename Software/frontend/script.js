@@ -42,10 +42,16 @@ let notificouAoIniciar = false;
 // ==========================================================================
 async function carregarRemediosDoBackend() {
     try {
-        const resposta = await fetch(`${API_URL}/remedios`);
-        if (resposta.ok) {
-            remediosAgendados = await resposta.json();
+        const [respRemedios, respHistorico] = await Promise.all([
+            fetch(`${API_URL}/remedios`),
+            fetch(`${API_URL}/historico`)
+        ]);
+
+        if ((respRemedios.ok) && (respHistorico.ok)) {
+            remediosAgendados = await respRemedios.json();
             console.log("🔄 Dados sincronizados do backend:", remediosAgendados);
+            historicoTomadas = await respHistorico.json(); // AGORA a variável é preenchida!
+            console.log("🔄 Histórico carregado:", historicoTomadas);
             
             remediosAgendados.forEach(remedio => {
                 calcularAutomaticoReposicao(remedio._id);
@@ -464,18 +470,27 @@ function verRemediosDoDia(dia, mes, ano) {
                 const item = document.createElement('div');
                 item.classList.add('card-remedio-dia');
 
-                const registroValido = historicoTomadas.find(h => h.dataFormatada === dataFormatada && h.remedioId === remedio._id && h.horario === hora);
-
+                const registroValido = historicoTomadas.find(h => 
+                    h.remedioId === remedio._id &&         // O registro de histórico aponta para este remédio
+                    h.dataFormatada === dataFormatada &&   // É o registro deste dia
+                    h.horario === hora                     // É o registro desta hora específica
+                );
                 const classeTomado = (registroValido && registroValido.status === 'tomado') ? 'ativo-verde' : '';
                 const classePular = (registroValido && registroValido.status === 'esquecido') ? 'ativo-vermelho' : '';
 
                 let textoStatus = '<span style="color: #64748b; font-size: 0.8rem;">Status: Pendente</span>';
-                if (registroValido) {
-                    textoStatus = registroValido.status === 'tomado' 
-                        ? '<span style="color: #22c55e; font-weight: bold; font-size: 0.8rem;">Status: Tomado ✓</span>' 
-                        : '<span style="color: #ef4444; font-weight: bold; font-size: 0.8rem;">Status: Não Tomado ✗</span>';
-                }
 
+                if (registroValido) {
+                    if (registroValido.status === 'tomado') {
+                        textoStatus = '<span style="color: #22c55e; font-weight: bold; font-size: 0.8rem;">Status: Tomado ✓</span>';
+                    } else if (registroValido.status === 'esquecido') {
+                        textoStatus = '<span style="color: #ef4444; font-weight: bold; font-size: 0.8rem;">Status: Não Tomado ✗</span>';
+                    }
+                } else {
+                    // Se não houver registro no histórico, o status é "Pendente" (o padrão)
+                    // Se quiser ver se o sistema está buscando o histórico, force um log aqui:
+                    console.log("Nenhum registro encontrado para:", remedio.nome, hora);
+                }
                 item.innerHTML = `
                     <div>
                         <span class="nome-medicamento">${remedio.nome}</span> <span class="badge-slot">${hora}</span><br>
@@ -483,8 +498,12 @@ function verRemediosDoDia(dia, mes, ano) {
                         <div class="status-texto-container" style="margin-top: 4px;">${textoStatus}</div>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
-                        <button class="btn-tomou ${classeTomado}" onclick="tomarRemedio('${remedio._id}', '${hora}')">Tomar</button>
-                        <button class="btn-nao-tomou ${classePular}" onclick="pularRemedio('${remedio._id}', '${hora}')">Pular</button>
+                            ${registroValido ? `
+                            <button onclick="alternarStatus('${registroValido._id}', '${registroValido.status}')" 
+                                    style="margin-top: 10px; cursor: pointer; ${registroValido.status === 'tomado' ? 'color: #ef4444;' : 'color: #22c55e;'}">
+                                Alterar para ${registroValido.status === 'tomado' ? 'Não Tomado' : 'Tomado'}
+                            </button>
+                        ` : ''}                    
                     </div>
                 `;
                 containerLista.appendChild(item);
@@ -499,52 +518,23 @@ function verRemediosDoDia(dia, mes, ano) {
     if (modalLista) modalLista.style.display = "block";
 }
 
+async function alternarStatus(historicoId, statusAtual) {
+    const novoStatus = statusAtual === 'tomado' ? 'esquecido' : 'tomado';
 
-async function tomarRemedio(remedioId, hora) {
     try {
-        // 1. Envia comando para a Caixa Física (via API que publica no MQTT)
-        //await fetch(`${API_URL}/api/caixa/comando`, {
-        //    method: 'POST',
-        //    headers: { 'Content-Type': 'application/json' },
-        //    body: JSON.stringify({ remedioId: remedioId, acao: 'tomar' })
-        //});
-
-        // 2. Registra no Histórico do MongoDB
-        await fetch(`${API_URL}/api/historico`, {
-            method: 'POST',
+        const resposta = await fetch(`${API_URL}/historico/${historicoId}`, {
+            method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                remedioId: remedioId,
-                data: new Date(),
-                horario: hora,
-                status: 'tomado'
-            })
+            body: JSON.stringify({ status: novoStatus })
         });
 
-        alert("Remédio tomado com sucesso!");
-        location.reload(); // Recarrega a página para atualizar a lista
-    } catch (error) {
-        console.error("Erro ao processar ação 'Tomar':", error);
-    }
-}
-
-async function pularRemedio(remedioId, hora) {
-    try {
-        // Registra apenas no Histórico como "pulado"
-        await fetch(`${API_URL}/api/historico`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                remedioId: remedioId, 
-                status: 'pulado',
-                data: new Date() 
-            })
-        });
-
-        alert("Remédio pulado.");
-        location.reload();
-    } catch (error) {
-        console.error("Erro ao processar ação 'Pular':", error);
+        if (resposta.ok) {
+            console.log("Status atualizado com sucesso!");
+            // Recarrega a tela para mostrar a mudança
+            await carregarRemediosDoBackend();
+        }
+    } catch (erro) {
+        console.error("Erro ao alternar status:", erro);
     }
 }
 
@@ -612,10 +602,6 @@ function atualizarProximoHorarioTela() {
                 <div>
                     <strong style="color: #0f172a;">${r.nome}</strong>
                     <span style="font-size: 0.8rem; color: #64748b; margin-left: 10px;">Dose: ${r.quantidade} pílula(s)</span>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <button class="btn-tomou" onclick="tomarRemedio('${r._id}', '${r.hora}')">Tomar</button>
-                    <button class="btn-nao-tomou" onclick="pularRemedio('${r._id}', '${r.hora}')">Pular</button>
                 </div>
             </div>
         `;
@@ -1068,6 +1054,8 @@ if ("Notification" in window && Notification.permission !== "granted" && Notific
 
 // 2. Executa imediatamente quando o site abre
 carregarRemediosDoBackend();
+const telaCalendario = document.getElementById('tela-calendario');
+if (telaCalendario && telaCalendario.style.display !== 'none') renderCalendar();
 
 // 3. Ciclo de Verificação de Horários (roda a cada minuto para as notificações do navegador)
 setInterval(verificarEGerenciarHorarios, 60000);
