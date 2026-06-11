@@ -9,8 +9,7 @@ Teste feito por Vinícius Sakuma
 // Definição dos pinos no ESP32
 #define pinoServo 18
 #define pinoIR 34
-#define greenLed 33
-#define redLed 32
+#define greenLed 4
 #define IN1 19
 #define IN2 21
 #define IN3 22
@@ -31,8 +30,7 @@ Stepper motor(
 void setup() {
   Serial.begin(115200);
 
-  pinMode(greenLed, OUTPUT); // GPIO 33
-  pinMode(redLed, OUTPUT); // GPIO 32
+  pinMode(greenLed, OUTPUT); // GPIO 4
   pinMode(pinoIR, INPUT); // GPIO 34
   
   meuServo.attach(pinoServo); // GPIO 18
@@ -49,10 +47,8 @@ void loop() {
     Serial.println("Nenhum remédio dispensado");
     //Led indicador
     digitalWrite(greenLed, LOW);
-    digitalWrite(redLed, HIGH);
-    delay(1000);
     //Movendo o motor de passo para selecionar o remédio
-    motor.step(passosPorVolta/4); //Move 90°
+    motor.step(-passosPorVolta/4); //Move 90°
     delay(1000);
     //Movendo o servo motor para pegar o remédio
     for (int ang = 0; ang <= anguloServo; ang++) {
@@ -67,12 +63,11 @@ void loop() {
     }
     delay(500);
     //Movendo o motor de passo para a posição inicial
-    motor.step(-passosPorVolta/4); //Move 90°
+    motor.step(passosPorVolta/4); //Move 90°
     delay(1000);
   }
   else {
     Serial.println("Remédio já foi dispensado");
     digitalWrite(greenLed, HIGH);
-    digitalWrite(redLed, LOW);
   }
 }
